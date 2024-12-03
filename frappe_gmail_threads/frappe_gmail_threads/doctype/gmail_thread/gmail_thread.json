@@ -1,0 +1,109 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:gmail_thread_id",
+ "creation": "2024-11-24 20:48:21.553986",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "emails_section",
+  "emails",
+  "more_information_section",
+  "reference_doctype",
+  "reference_name",
+  "reference_owner",
+  "gmail_thread_id",
+  "column_break_cmhm",
+  "email_account",
+  "subject_of_first_mail"
+ ],
+ "fields": [
+  {
+   "collapsible": 1,
+   "fieldname": "more_information_section",
+   "fieldtype": "Section Break",
+   "label": "More Information"
+  },
+  {
+   "fieldname": "reference_doctype",
+   "fieldtype": "Link",
+   "label": "Reference Document Type",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "reference_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Reference Name",
+   "options": "reference_doctype"
+  },
+  {
+   "fieldname": "reference_owner",
+   "fieldtype": "Read Only",
+   "label": "Reference Owner"
+  },
+  {
+   "fieldname": "emails_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_cmhm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "email_account",
+   "fieldtype": "Link",
+   "label": "Email Account",
+   "options": "Email Account"
+  },
+  {
+   "fieldname": "emails",
+   "fieldtype": "Table",
+   "label": "Emails",
+   "options": "Single Email CT",
+   "read_only": 1
+  },
+  {
+   "fieldname": "subject_of_first_mail",
+   "fieldtype": "Small Text",
+   "label": "Thread Subject"
+  },
+  {
+   "fieldname": "gmail_thread_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Gmail Thread ID",
+   "read_only": 1,
+   "reqd": 1,
+   "unique": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-11-29 01:42:28.181209",
+ "modified_by": "Administrator",
+ "module": "Frappe Gmail Threads",
+ "name": "Gmail Thread",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "show_title_field_in_link": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "subject_of_first_mail",
+ "track_changes": 1,
+ "track_seen": 1
+}
