@@ -168,13 +168,13 @@ fixtures = [
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
+scheduler_events = {
 # 	"all": [
 # 		"frappe_gmail_threads.tasks.all"
 # 	],
-# 	"daily": [
-# 		"frappe_gmail_threads.tasks.daily"
-# 	],
+	"daily": [
+		"frappe_gmail_threads.tasks.daily.enable_pubsub_everyday"
+	],
 # 	"hourly": [
 # 		"frappe_gmail_threads.tasks.hourly"
 # 	],
@@ -184,7 +184,7 @@ fixtures = [
 # 	"monthly": [
 # 		"frappe_gmail_threads.tasks.monthly"
 # 	],
-# }
+}
 
 # Testing
 # -------

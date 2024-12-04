@@ -25,6 +25,7 @@ class GmailThread(Document):
                 communication = frappe.get_doc("Communication", email.linked_communication)
                 communication.reference_doctype = self.reference_doctype
                 communication.reference_name = self.reference_name
+                communication.status = "Linked"
                 communication.save(ignore_permissions=True)
 
 
