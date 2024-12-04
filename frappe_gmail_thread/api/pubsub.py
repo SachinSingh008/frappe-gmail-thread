@@ -17,6 +17,6 @@ def callback():
         email_address = message.get("emailAddress")
         history_id = message.get("historyId")
         if email_address and history_id:
-            frappe.enqueue("frappe_gmail_threads.frappe_gmail_threads.doctype.gmail_thread.gmail_thread.sync", email=email_address, history_id=history_id)
+            frappe.enqueue("frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_thread.gmail_thread.sync", email=email_address, history_id=history_id)
         print("PubSub message received: ", message)
     return "OK"

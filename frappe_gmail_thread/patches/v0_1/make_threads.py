@@ -1,5 +1,5 @@
 # import frappe
-# from frappe_gmail_threads.utils.helpers import create_new_email, find_gmail_thread
+# from frappe_gmail_thread.utils.helpers import create_new_email, find_gmail_thread
 
 # def sync_emails():
 #     pass

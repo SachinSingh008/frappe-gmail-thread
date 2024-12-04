@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe_gmail_threads.frappe_gmail_threads.doctype.gmail_thread.gmail_thread import disable_pubsub, enable_pubsub
+from frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_thread.gmail_thread import disable_pubsub, enable_pubsub
 
 # override validate method of Email Account to check if Client ID and Client Secret are set in Google Settings when custom_gmail_enabled is set in Email Account
 def validate(doc, method = None):
@@ -21,7 +21,7 @@ def on_update(doc, method = None):
                 frappe.throw(_("Please authorize Gmail by clicking on 'Authorize Gmail' button."))
             else:
                 frappe.enqueue(
-                    "frappe_gmail_threads.frappe_gmail_threads.doctype.gmail_thread.gmail_thread.sync",
+                    "frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_thread.gmail_thread.sync",
                     email=doc.email_id,
                     queue="long",
                     enqueue_after_commit=True,

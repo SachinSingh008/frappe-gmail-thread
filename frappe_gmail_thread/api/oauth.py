@@ -28,7 +28,7 @@ def get_auth_url(doc):
         frappe.throw(_("You can only authorize access for your own email account"), frappe.PermissionError)
     google_settings = frappe.get_single("Google Settings")
     client_id = google_settings.client_id
-    redirect_uri = frappe.utils.get_url("/api/method/frappe_gmail_threads.api.oauth.callback")
+    redirect_uri = frappe.utils.get_url("/api/method/frappe_gmail_thread.api.oauth.callback")
     return get_authentication_url(client_id, redirect_uri)
 
 
@@ -41,7 +41,7 @@ def authorize_access(email, reauthorize=None):
     email_account = frappe.get_doc("Email Account", {"email_id": email})
     email_account.check_permission("write")
 
-    redirect_uri = frappe.utils.get_url("/api/method/frappe_gmail_threads.api.oauth.callback")
+    redirect_uri = frappe.utils.get_url("/api/method/frappe_gmail_thread.api.oauth.callback")
 
     if not email_account.custom_gmail_authorization_code or reauthorize:
         return get_authentication_url(client_id=google_settings.client_id, redirect_uri=redirect_uri)

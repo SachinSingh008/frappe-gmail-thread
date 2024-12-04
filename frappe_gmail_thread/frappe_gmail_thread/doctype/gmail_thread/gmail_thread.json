@@ -81,7 +81,7 @@
  "links": [],
  "modified": "2024-11-29 01:42:28.181209",
  "modified_by": "Administrator",
- "module": "Frappe Gmail Threads",
+ "module": "Frappe Gmail Thread",
  "name": "Gmail Thread",
  "naming_rule": "By fieldname",
  "owner": "Administrator",

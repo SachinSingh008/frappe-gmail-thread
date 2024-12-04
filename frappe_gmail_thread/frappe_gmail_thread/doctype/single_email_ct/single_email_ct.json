@@ -182,7 +182,7 @@
  "links": [],
  "modified": "2024-11-29 10:46:23.385960",
  "modified_by": "Administrator",
- "module": "Frappe Gmail Threads",
+ "module": "Frappe Gmail Thread",
  "name": "Single Email CT",
  "owner": "Administrator",
  "permissions": [],

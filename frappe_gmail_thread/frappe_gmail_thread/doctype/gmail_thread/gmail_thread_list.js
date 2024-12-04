@@ -2,7 +2,7 @@ frappe.listview_settings['Gmail Thread'] = {
     onload: function(listview) {
         console.log("onload");
         frappe.call({
-            method: "frappe_gmail_threads.api.gmail.is_gmail_configured",
+            method: "frappe_gmail_thread.api.gmail.is_gmail_configured",
             
             callback: function(r) {
 				if (r.message) {

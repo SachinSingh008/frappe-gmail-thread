@@ -81,7 +81,6 @@ def find_gmail_thread(thread_id):
 
 def create_new_email(email, email_account, append_to=None, gmail_thread = None):
     email_content = base64.urlsafe_b64decode(email['raw'].encode('ASCII')).decode('utf-8')
-    snippet = email["snippet"]
     inbound_mail = GmailInboundMail(
                             content=email_content,
                             email_account=email_account,
@@ -121,7 +120,7 @@ def create_new_email(email, email_account, append_to=None, gmail_thread = None):
     new_email.cc = communication.cc
     new_email.bcc = communication.bcc
     new_email.content = communication.content
-    new_email.plain_content = snippet
+    new_email.plain_content = inbound_mail.text_content.strip()
     new_email.date_and_time = communication.communication_date
     new_email.sender_full_name = communication.sender_full_name
     new_email.read_receipt = communication.read_receipt

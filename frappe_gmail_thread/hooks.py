@@ -1,5 +1,5 @@
-app_name = "frappe_gmail_threads"
-app_title = "Frappe Gmail Threads"
+app_name = "frappe_gmail_thread"
+app_title = "Frappe Gmail Thread"
 app_publisher = "rtCamp"
 app_description = "This app is used to display emails as threads, just like Gmail does."
 app_email = "sys@rtcamp.com"
@@ -13,11 +13,11 @@ app_license = "agpl-3.0"
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
 # 	{
-# 		"name": "frappe_gmail_threads",
-# 		"logo": "/assets/frappe_gmail_threads/logo.png",
-# 		"title": "Frappe Gmail Threads",
-# 		"route": "/frappe_gmail_threads",
-# 		"has_permission": "frappe_gmail_threads.api.permission.has_app_permission"
+# 		"name": "frappe_gmail_thread",
+# 		"logo": "/assets/frappe_gmail_thread/logo.png",
+# 		"title": "Frappe Gmail Thread",
+# 		"route": "/frappe_gmail_thread",
+# 		"has_permission": "frappe_gmail_thread.api.permission.has_app_permission"
 # 	}
 # ]
 
@@ -25,15 +25,15 @@ app_license = "agpl-3.0"
 # ------------------
 
 # include js, css files in header of desk.html
-# app_include_css = "/assets/frappe_gmail_threads/css/frappe_gmail_threads.css"
-# app_include_js = "/assets/frappe_gmail_threads/js/frappe_gmail_threads.js"
+# app_include_css = "/assets/frappe_gmail_thread/css/frappe_gmail_thread.css"
+# app_include_js = "/assets/frappe_gmail_thread/js/frappe_gmail_thread.js"
 
 # include js, css files in header of web template
-# web_include_css = "/assets/frappe_gmail_threads/css/frappe_gmail_threads.css"
-# web_include_js = "/assets/frappe_gmail_threads/js/frappe_gmail_threads.js"
+# web_include_css = "/assets/frappe_gmail_thread/css/frappe_gmail_thread.css"
+# web_include_js = "/assets/frappe_gmail_thread/js/frappe_gmail_thread.js"
 
 # include custom scss in every website theme (without file extension ".scss")
-# website_theme_scss = "frappe_gmail_threads/public/scss/website"
+# website_theme_scss = "frappe_gmail_thread/public/scss/website"
 
 # include js, css files in header of web form
 # webform_include_js = {"doctype": "public/js/doctype.js"}
@@ -53,7 +53,7 @@ doctype_js = {
 # Svg Icons
 # ------------------
 # include app icons in desk
-# app_include_icons = "frappe_gmail_threads/public/icons.svg"
+# app_include_icons = "frappe_gmail_thread/public/icons.svg"
 
 # Home Pages
 # ----------
@@ -77,43 +77,43 @@ doctype_js = {
 
 # add methods and filters to jinja environment
 # jinja = {
-# 	"methods": "frappe_gmail_threads.utils.jinja_methods",
-# 	"filters": "frappe_gmail_threads.utils.jinja_filters"
+# 	"methods": "frappe_gmail_thread.utils.jinja_methods",
+# 	"filters": "frappe_gmail_thread.utils.jinja_filters"
 # }
 
 # Installation
 # ------------
 
-# before_install = "frappe_gmail_threads.install.before_install"
-# after_install = "frappe_gmail_threads.install.after_install"
+# before_install = "frappe_gmail_thread.install.before_install"
+# after_install = "frappe_gmail_thread.install.after_install"
 
 # Uninstallation
 # ------------
 
-# before_uninstall = "frappe_gmail_threads.uninstall.before_uninstall"
-# after_uninstall = "frappe_gmail_threads.uninstall.after_uninstall"
+# before_uninstall = "frappe_gmail_thread.uninstall.before_uninstall"
+# after_uninstall = "frappe_gmail_thread.uninstall.after_uninstall"
 
 # Integration Setup
 # ------------------
 # To set up dependencies/integrations with other apps
 # Name of the app being installed is passed as an argument
 
-# before_app_install = "frappe_gmail_threads.utils.before_app_install"
-# after_app_install = "frappe_gmail_threads.utils.after_app_install"
+# before_app_install = "frappe_gmail_thread.utils.before_app_install"
+# after_app_install = "frappe_gmail_thread.utils.after_app_install"
 
 # Integration Cleanup
 # -------------------
 # To clean up dependencies/integrations with other apps
 # Name of the app being uninstalled is passed as an argument
 
-# before_app_uninstall = "frappe_gmail_threads.utils.before_app_uninstall"
-# after_app_uninstall = "frappe_gmail_threads.utils.after_app_uninstall"
+# before_app_uninstall = "frappe_gmail_thread.utils.before_app_uninstall"
+# after_app_uninstall = "frappe_gmail_thread.utils.after_app_uninstall"
 
 # Desk Notifications
 # ------------------
 # See frappe.core.notifications.get_notification_config
 
-# notification_config = "frappe_gmail_threads.notifications.get_notification_config"
+# notification_config = "frappe_gmail_thread.notifications.get_notification_config"
 
 # Permissions
 # -----------
@@ -141,11 +141,11 @@ doctype_js = {
 
 doc_events = {
 	# "Communication": {
-	# 	"after_insert": "frappe_gmail_threads.doc_events.communication.after_insert",
+	# 	"after_insert": "frappe_gmail_thread.doc_events.communication.after_insert",
 	# },
    "Email Account": {
-       "validate": "frappe_gmail_threads.doc_events.email_account.validate",
-       "on_update": "frappe_gmail_threads.doc_events.email_account.on_update",
+       "validate": "frappe_gmail_thread.doc_events.email_account.validate",
+       "on_update": "frappe_gmail_thread.doc_events.email_account.on_update",
     },
 }
 
@@ -159,7 +159,7 @@ fixtures = [
             [
                 "module",
                 "in",
-                ["Frappe Gmail Threads"],
+                ["Frappe Gmail Thread"],
             ]
         ],
     },
@@ -170,39 +170,39 @@ fixtures = [
 
 scheduler_events = {
 # 	"all": [
-# 		"frappe_gmail_threads.tasks.all"
+# 		"frappe_gmail_thread.tasks.all"
 # 	],
 	"daily": [
-		"frappe_gmail_threads.tasks.daily.enable_pubsub_everyday"
+		"frappe_gmail_thread.tasks.daily.enable_pubsub_everyday"
 	],
 # 	"hourly": [
-# 		"frappe_gmail_threads.tasks.hourly"
+# 		"frappe_gmail_thread.tasks.hourly"
 # 	],
 # 	"weekly": [
-# 		"frappe_gmail_threads.tasks.weekly"
+# 		"frappe_gmail_thread.tasks.weekly"
 # 	],
 # 	"monthly": [
-# 		"frappe_gmail_threads.tasks.monthly"
+# 		"frappe_gmail_thread.tasks.monthly"
 # 	],
 }
 
 # Testing
 # -------
 
-# before_tests = "frappe_gmail_threads.install.before_tests"
+# before_tests = "frappe_gmail_thread.install.before_tests"
 
 # Overriding Methods
 # ------------------------------
 #
 # override_whitelisted_methods = {
-# 	"frappe.desk.doctype.event.event.get_events": "frappe_gmail_threads.event.get_events"
+# 	"frappe.desk.doctype.event.event.get_events": "frappe_gmail_thread.event.get_events"
 # }
 #
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,
 # along with any modifications made in other Frappe apps
 # override_doctype_dashboards = {
-# 	"Task": "frappe_gmail_threads.task.get_dashboard_data"
+# 	"Task": "frappe_gmail_thread.task.get_dashboard_data"
 # }
 
 # exempt linked doctypes from being automatically cancelled
@@ -216,13 +216,13 @@ scheduler_events = {
 
 # Request Events
 # ----------------
-# before_request = ["frappe_gmail_threads.utils.before_request"]
-# after_request = ["frappe_gmail_threads.utils.after_request"]
+# before_request = ["frappe_gmail_thread.utils.before_request"]
+# after_request = ["frappe_gmail_thread.utils.after_request"]
 
 # Job Events
 # ----------
-# before_job = ["frappe_gmail_threads.utils.before_job"]
-# after_job = ["frappe_gmail_threads.utils.after_job"]
+# before_job = ["frappe_gmail_thread.utils.before_job"]
+# after_job = ["frappe_gmail_thread.utils.after_job"]
 
 # User Data Protection
 # --------------------
@@ -252,7 +252,7 @@ scheduler_events = {
 # --------------------------------
 
 # auth_hooks = [
-# 	"frappe_gmail_threads.auth.validate"
+# 	"frappe_gmail_thread.auth.validate"
 # ]
 
 # Automatically update python controller files with type annotations for this app.

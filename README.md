@@ -1,4 +1,4 @@
-## Frappe Gmail Threads
+## Frappe Gmail Thread
 
 This app is used to display emails as threads, just like Gmail does.
 

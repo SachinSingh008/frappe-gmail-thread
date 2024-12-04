@@ -13,7 +13,7 @@ from frappe.integrations.google_oauth import GoogleOAuth
 from frappe import _
 import requests
 
-from frappe_gmail_threads.utils.helpers import create_new_email, find_gmail_thread
+from frappe_gmail_thread.utils.helpers import create_new_email, find_gmail_thread
 
 SCOPES = "https://www.googleapis.com/auth/gmail.readonly"
 
@@ -73,7 +73,7 @@ def sync(email = None, history_id = None):
             email_account.reload()
             email_account.custom_gmail_last_historyid = max_history_id
             email_account.save(ignore_permissions=True)
-            email_account.notify_change("update")
+            email_account.notify_update()
         else:
             labels = gmail.users().labels().list(userId="me").execute()
             label_ids = []
