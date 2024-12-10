@@ -15,8 +15,11 @@ def callback():
             frappe.log_error(f"Error while decoding message: {message}")
             return "OK"
         email_address = message.get("emailAddress")
+        user = frappe.get_doc("User", {"email": email_address, "user_type": "System User"})
+        if not user:
+            return "OK"
         history_id = message.get("historyId")
         if email_address and history_id:
-            frappe.enqueue("frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_thread.gmail_thread.sync", email=email_address, history_id=history_id)
+            frappe.enqueue("frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_thread.gmail_thread.sync", user=user.name, history_id=history_id)
         print("PubSub message received: ", message)
     return "OK"

@@ -19,33 +19,40 @@ SCOPES = "https://www.googleapis.com/auth/gmail.readonly"
 
 
 class GmailThread(Document):
-    def on_update(self):
-        if self.has_value_changed("reference_doctype") or self.has_value_changed("reference_name"):
-            for email in self.emails:
-                communication = frappe.get_doc("Communication", email.linked_communication)
-                communication.reference_doctype = self.reference_doctype
-                communication.reference_name = self.reference_name
-                communication.status = "Linked"
-                communication.save(ignore_permissions=True)
+    pass
+    # def on_update(self):
+    #     if self.has_value_changed("reference_doctype") or self.has_value_changed("reference_name"):
+    #         for email in self.emails:
+    #             communication = frappe.get_doc("Communication", email.linked_communication)
+    #             communication.reference_doctype = self.reference_doctype
+    #             communication.reference_name = self.reference_name
+    #             communication.status = "Linked"
+    #             communication.save(ignore_permissions=True)
 
 
-def sync(email = None, history_id = None):
-    if not email:
+def sync(user = None, history_id = None):
+    if not user:
         user = frappe.session.user
-        email = frappe.get_value("User", user, "email")
-    email_account = frappe.get_doc("Email Account", {"email_id": email})
-    if not email_account.custom_gmail_enabled:
+    gmail_account = frappe.get_doc("Gmail Account", {"linked_user": user})
+    if not gmail_account.gmail_enabled:
         frappe.throw(_("Please configure Gmail in Email Account."))
-    if not email_account.custom_gmail_refresh_token:
+    if not gmail_account.refresh_token:
         frappe.throw(_("Please authorize Gmail by clicking on 'Authorize Gmail' button."))
-    gmail = get_gmail_object(email_account.name)
-    folders = email_account.imap_folder
-    for folder in folders:
-        folder_name = folder.folder_name
+    gmail = get_gmail_object(gmail_account.name)
+    folders = ["INBOX"]  # TODO: Give option to select folders
+    labels = gmail.users().labels().list(userId="me").execute()
+    label_ids = []
+    for folder_name in folders:
+        for label in labels["labels"]:
+            if label["name"] == folder_name:
+                label_ids.append(label["id"])
+    if not label_ids:
+        return
+    for label_id in label_ids:
         if not history_id:
             max_history_id = 0
             try:
-                threads = gmail.users().threads().list(userId="me", q=f"in:{folder_name}").execute()
+                threads = gmail.users().threads().list(userId="me", labelIds=label_id).execute()
             except googleapiclient.errors.HttpError:
                 continue
             for thread in threads["threads"][::-1]:
@@ -55,13 +62,13 @@ def sync(email = None, history_id = None):
                 if not gmail_thread:
                     gmail_thread = frappe.new_doc("Gmail Thread")
                     gmail_thread.gmail_thread_id = thread_id
-                    gmail_thread.email_account = email_account.name
+                    gmail_thread.gmail_account = gmail_account.name
                 for message in thread["messages"]:
                     try:
                         raw_email = gmail.users().messages().get(userId="me", id=message["id"], format="raw").execute()
                     except googleapiclient.errors.HttpError:
                         continue
-                    email = create_new_email(raw_email, email_account, append_to=folder.append_to if folder.append_to else None)
+                    email = create_new_email(raw_email, gmail_account)
                     if not gmail_thread.subject_of_first_mail:
                         gmail_thread.subject_of_first_mail = email.subject
                         gmail_thread.creation = email.date_and_time
@@ -70,72 +77,62 @@ def sync(email = None, history_id = None):
                         max_history_id = int(message["historyId"])
                 gmail_thread.save(ignore_permissions=True)
                 frappe.db.set_value("Gmail Thread", gmail_thread.name, "modified", email.date_and_time, update_modified=False)
-            email_account.reload()
-            email_account.custom_gmail_last_historyid = max_history_id
-            email_account.save(ignore_permissions=True)
-            email_account.notify_update()
+            gmail_account.reload()
+            gmail_account.last_historyid = max_history_id
+            gmail_account.save(ignore_permissions=True)
+            gmail_thread.notify_update()
         else:
-            labels = gmail.users().labels().list(userId="me").execute()
-            label_ids = []
-            for folder in folders:
-                folder_name = folder.folder_name
-                for label in labels["labels"]:
-                    if label["name"] == folder_name:
-                        label_ids.append(label["id"])
-            if not label_ids:
-                return
-            for label_id in label_ids:
-                try:
-                    history = gmail.users().history().list(userId="me", startHistoryId=history_id, historyTypes="messageAdded", labelId=label_id).execute()
-                except googleapiclient.errors.HttpError:
-                    continue
-                new_history_id = int(history["historyId"])
-                last_history_id = int(email_account.custom_gmail_last_historyid)
-                if new_history_id > last_history_id:
-                    history = gmail.users().history().list(userId="me", startHistoryId=last_history_id, historyTypes="messageAdded", labelId=label_id).execute()
-                    if 'history' not in history:
-                        return
-                    for history in history["history"]:
-                        for message in history["messages"]:
-                            try:
-                                raw_email = gmail.users().messages().get(userId="me", id=message["id"], format="raw").execute()
-                            except googleapiclient.errors.HttpError:
-                                continue
-                            thread_id = message["threadId"]
-                            gmail_thread = find_gmail_thread(thread_id)
-                            if not gmail_thread:
-                                gmail_thread = frappe.new_doc("Gmail Thread")
-                                gmail_thread.gmail_thread_id = thread_id
-                                gmail_thread.email_account = email_account.name
-                            email = create_new_email(raw_email, email_account, append_to=folder.append_to if folder.append_to else None)
-                            if not gmail_thread.subject_of_first_mail:
-                                gmail_thread.subject_of_first_mail = email.subject
-                                gmail_thread.creation = email.date_and_time
-                            gmail_thread.append("emails", email)
-                            gmail_thread.save(ignore_permissions=True)
-                            frappe.db.set_value("Gmail Thread", gmail_thread.name, "modified", email.date_and_time, update_modified=False)
-                        
-                    email_account.reload()
-                    email_account.custom_gmail_last_historyid = new_history_id
-                    email_account.save(ignore_permissions=True)
-                    email_account.notify_update()
+            try:
+                history = gmail.users().history().list(userId="me", startHistoryId=history_id, historyTypes="messageAdded", labelId=label_id).execute()
+            except googleapiclient.errors.HttpError:
+                continue
+            new_history_id = int(history["historyId"])
+            last_history_id = int(gmail_account.last_historyid)
+            if new_history_id > last_history_id:
+                history = gmail.users().history().list(userId="me", startHistoryId=last_history_id, historyTypes="messageAdded", labelId=label_id).execute()
+                if 'history' not in history:
+                    return
+                for history in history["history"]:
+                    for message in history["messages"]:
+                        try:
+                            raw_email = gmail.users().messages().get(userId="me", id=message["id"], format="raw").execute()
+                        except googleapiclient.errors.HttpError:
+                            continue
+                        thread_id = message["threadId"]
+                        gmail_thread = find_gmail_thread(thread_id)
+                        if not gmail_thread:
+                            gmail_thread = frappe.new_doc("Gmail Thread")
+                            gmail_thread.gmail_thread_id = thread_id
+                            gmail_thread.gmail_account = gmail_account.name
+                        email = create_new_email(raw_email, gmail_account)
+                        if not gmail_thread.subject_of_first_mail:
+                            gmail_thread.subject_of_first_mail = email.subject
+                            gmail_thread.creation = email.date_and_time
+                        gmail_thread.append("emails", email)
+                        gmail_thread.save(ignore_permissions=True)
+                        frappe.db.set_value("Gmail Thread", gmail_thread.name, "modified", email.date_and_time, update_modified=False)
+                    
+                gmail_account.reload()
+                gmail_account.last_historyid = new_history_id
+                gmail_account.save(ignore_permissions=True)
+                gmail_thread.notify_update()
 
 
 
-def enable_pubsub(email_account):
-    if not email_account.custom_gmail_enabled or not email_account.custom_gmail_sync_in_realtime:
+def enable_pubsub(gmail_account):
+    google_settings = frappe.get_single("Google Settings")
+    if not gmail_account.gmail_enabled or not google_settings.custom_gmail_sync_in_realtime:
         return False
-    if not email_account.custom_gmail_refresh_token:
+    if not gmail_account.refresh_token:
         frappe.throw(_("Please authorize Gmail by clicking on 'Authorize Gmail' button."))
-    if not email_account.custom_gmail_pubsub_topic:
-        frappe.throw(_("Please configure PubSub in Email Account."))
-    gmail = get_gmail_object(email_account.name)
-    topic = email_account.custom_gmail_pubsub_topic
-    folders = email_account.imap_folder
+    if not google_settings.custom_gmail_pubsub_topic:
+        frappe.throw(_("Please configure PubSub in Google Settings."))
+    gmail = get_gmail_object(gmail_account.name)
+    topic = google_settings.custom_gmail_pubsub_topic
+    folders = ["INBOX"]  # TODO: Give option to select folders, reference: sync function in this file
     labels = gmail.users().labels().list(userId="me").execute()
     label_ids = []
-    for folder in folders:
-        folder_name = folder.folder_name
+    for folder_name in folders:
         for label in labels["labels"]:
             if label["name"] == folder_name:
                 label_ids.append(label["id"])
@@ -151,54 +148,55 @@ def enable_pubsub(email_account):
     gmail.users().watch(userId="me", body=body).execute()
     print("PubSub enabled")
     
-def disable_pubsub(email_account):
-    if not email_account.custom_gmail_enabled or email_account.custom_gmail_sync_in_realtime:
+def disable_pubsub(gmail_account):
+    google_settings = frappe.get_single("Google Settings")
+    if not gmail_account.gmail_enabled or google_settings.custom_gmail_sync_in_realtime:
         return False
-    if not email_account.custom_gmail_refresh_token:
+    if not gmail_account.refresh_token:
         frappe.throw(_("Please authorize Gmail by clicking on 'Authorize Gmail' button."))
-    if not email_account.custom_gmail_pubsub_topic:
+    if not google_settings.custom_gmail_pubsub_topic:
         frappe.throw(_("Please configure PubSub in Email Account."))
-    gmail = get_gmail_object(email_account.name)
+    gmail = get_gmail_object(gmail_account.name)
     gmail.users().stop(userId="me").execute()
 
-def get_access_token(email_account_name):
-        google_settings = frappe.get_single("Google Settings")
-        email_account = frappe.get_doc("Email Account", email_account_name)
+def get_access_token(gmail_account_name):
+    google_settings = frappe.get_single("Google Settings")
+    gmail_account = frappe.get_doc("Gmail Account", gmail_account_name)
 
-        if not email_account.custom_gmail_refresh_token:
-            button_label = frappe.bold(_("Authorize Gmail"))
-            raise frappe.ValidationError(_("Click on {0} in Email Account to generate Refresh Token.").format(button_label))
+    if not gmail_account.refresh_token:
+        button_label = frappe.bold(_("Authorize Gmail"))
+        raise frappe.ValidationError(_("Click on {0} in Gmail Account to generate Refresh Token.").format(button_label))
 
-        data = {
-            "client_id": google_settings.client_id,
-            "client_secret": google_settings.get_password(fieldname="client_secret", raise_exception=False),
-            "refresh_token": email_account.get_password(fieldname="custom_gmail_refresh_token", raise_exception=False),
-            "grant_type": "refresh_token",
-            "scope": SCOPES,
-        }
+    data = {
+        "client_id": google_settings.client_id,
+        "client_secret": google_settings.get_password(fieldname="client_secret", raise_exception=False),
+        "refresh_token": gmail_account.get_password(fieldname="refresh_token", raise_exception=False),
+        "grant_type": "refresh_token",
+        "scope": SCOPES,
+    }
 
-        try:
-            r = requests.post(GoogleOAuth.OAUTH_URL, data=data).json()
-        except requests.exceptions.HTTPError:
-            button_label = frappe.bold(_("Authorize Gmail"))
-            frappe.throw(
-                _(
-                    "Something went wrong during the token generation. Click on {0} in Email Account to generate Refresh Token."
-                ).format(button_label)
-            )
+    try:
+        r = requests.post(GoogleOAuth.OAUTH_URL, data=data).json()
+    except requests.exceptions.HTTPError:
+        button_label = frappe.bold(_("Authorize Gmail"))
+        frappe.throw(
+            _(
+                "Something went wrong during the token generation. Click on {0} in Gmail Account to generate Refresh Token."
+            ).format(button_label)
+        )
 
-        return r.get("access_token")
+    return r.get("access_token")
 
 
-def get_gmail_object(email_account_name):
+def get_gmail_object(gmail_account_name):
     """
-    Returns an object of Google Calendar along with Google Calendar doc.
+    Returns an object of Google Mail along with Google Mail doc.
     """
     google_settings = frappe.get_doc("Google Settings")
-    account = frappe.get_doc("Email Account", email_account_name)
+    account = frappe.get_doc("Gmail Account", gmail_account_name)
 
     credentials_dict = {
-        "token": get_access_token(email_account_name),
+        "token": get_access_token(gmail_account_name),
         "refresh_token": account.get_password(fieldname="refresh_token", raise_exception=False),
         "token_uri": GoogleOAuth.OAUTH_URL,
         "client_id": google_settings.client_id,

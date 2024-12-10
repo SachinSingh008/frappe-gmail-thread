@@ -14,7 +14,7 @@
   "reference_owner",
   "gmail_thread_id",
   "column_break_cmhm",
-  "email_account",
+  "gmail_account",
   "subject_of_first_mail"
  ],
  "fields": [
@@ -50,12 +50,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "email_account",
-   "fieldtype": "Link",
-   "label": "Email Account",
-   "options": "Email Account"
-  },
-  {
    "fieldname": "emails",
    "fieldtype": "Table",
    "label": "Emails",
@@ -75,11 +69,17 @@
    "read_only": 1,
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "gmail_account",
+   "fieldtype": "Link",
+   "label": "Gmail Account",
+   "options": "Gmail Account"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-11-29 01:42:28.181209",
+ "modified": "2024-12-09 23:53:46.254519",
  "modified_by": "Administrator",
  "module": "Frappe Gmail Thread",
  "name": "Gmail Thread",

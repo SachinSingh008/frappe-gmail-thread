@@ -26,7 +26,7 @@ app_license = "agpl-3.0"
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/frappe_gmail_thread/css/frappe_gmail_thread.css"
-# app_include_js = "/assets/frappe_gmail_thread/js/frappe_gmail_thread.js"
+app_include_js = ["/assets/frappe_gmail_thread/js/activity.js"]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/frappe_gmail_thread/css/frappe_gmail_thread.css"
@@ -43,9 +43,9 @@ app_license = "agpl-3.0"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-doctype_js = {
-    "Email Account" : "override/js/email_account.js"
-}
+# doctype_js = {
+#     "Email Account" : "override/js/email_account.js"
+# }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -139,15 +139,11 @@ doctype_js = {
 # ---------------
 # Hook on document methods and events
 
-doc_events = {
-	# "Communication": {
-	# 	"after_insert": "frappe_gmail_thread.doc_events.communication.after_insert",
-	# },
-   "Email Account": {
-       "validate": "frappe_gmail_thread.doc_events.email_account.validate",
-       "on_update": "frappe_gmail_thread.doc_events.email_account.on_update",
-    },
-}
+# doc_events = {
+# 	"Communication": {
+# 		"after_insert": "frappe_gmail_thread.doc_events.communication.after_insert",
+# 	},
+# }
 
 # Fixtures
 # ----------

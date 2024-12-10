@@ -68,8 +68,6 @@ class GmailInboundMail(InboundMail):
         communication.save()
         return communication
 
-    
-
 
 def find_gmail_thread(thread_id):
     try:
@@ -79,17 +77,17 @@ def find_gmail_thread(thread_id):
     return gmail_thread
     
 
-def create_new_email(email, email_account, append_to=None, gmail_thread = None):
+def create_new_email(email, gmail_account, append_to=None, gmail_thread = None):
     email_content = base64.urlsafe_b64decode(email['raw'].encode('ASCII')).decode('utf-8')
     inbound_mail = GmailInboundMail(
                             content=email_content,
-                            email_account=email_account,
+                            email_account=gmail_account,
                             append_to=append_to
                         )
-
+    user = frappe.get_doc("User", gmail_account.linked_user)
     # check if email is sent or received
     is_sent = False
-    if inbound_mail.from_email == email_account.email_id:
+    if inbound_mail.from_email == user.email:
         is_sent = True
 
     try:
@@ -99,37 +97,37 @@ def create_new_email(email, email_account, append_to=None, gmail_thread = None):
     except frappe.DoesNotExistError:
         pass
 
-    if is_sent:
-        inbound_mail._build_communication_doc(sent_or_received="Sent")
-    else:
-        inbound_mail.process()
+    # if is_sent:
+    #     inbound_mail._build_communication_doc(sent_or_received="Sent")
+    # else:
+    #     inbound_mail.process()
     
-    communication = frappe.get_doc("Communication", {"message_id": inbound_mail.message_id})
-    if gmail_thread and gmail_thread.reference_doctype and gmail_thread.reference_docname:
-        communication.reference_doctype = gmail_thread.reference_doctype
-        communication.reference_name = gmail_thread.reference_docname
-        communication.status = "Linked"
-        communication.save(ignore_permissions=True)
-        frappe.db.commit()
+    # communication = frappe.get_doc("Communication", {"message_id": inbound_mail.message_id})
+    # if gmail_thread and gmail_thread.reference_doctype and gmail_thread.reference_docname:
+    #     communication.reference_doctype = gmail_thread.reference_doctype
+    #     communication.reference_name = gmail_thread.reference_docname
+    #     communication.status = "Linked"
+    #     communication.save(ignore_permissions=True)
+    #     frappe.db.commit()
     
     new_email = frappe.new_doc("Single Email CT")
     new_email.gmail_message_id = email["id"]
-    new_email.subject = communication.subject
-    new_email.sender = communication.sender
-    new_email.recipients = communication.recipients
-    new_email.cc = communication.cc
-    new_email.bcc = communication.bcc
-    new_email.content = communication.content
+    new_email.subject = inbound_mail.subject
+    new_email.sender = inbound_mail.from_email
+    new_email.recipients = ""  # TODO: Correct this
+    new_email.cc = "" # TODO: Correct this
+    new_email.bcc = "" # TODO: Correct this
+    new_email.content = inbound_mail.content
     new_email.plain_content = inbound_mail.text_content.strip()
-    new_email.date_and_time = communication.communication_date
-    new_email.sender_full_name = communication.sender_full_name
-    new_email.read_receipt = communication.read_receipt
-    new_email.read_by_recipient = communication.read_by_recipient
-    new_email.read_by_recipient_on = communication.read_by_recipient_on
-    new_email.email_account = communication.email_account
-    new_email.email_status = communication.email_status
-    new_email.email_message_id = communication.message_id
-    new_email.linked_communication = communication.name
+    new_email.date_and_time = inbound_mail.date
+    new_email.sender_full_name = inbound_mail.from_real_name
+    new_email.read_receipt = False
+    new_email.read_by_recipient = False
+    new_email.read_by_recipient_on = None
+    new_email.gmail_account = gmail_account.name
+    new_email.email_status = "Open"
+    new_email.email_message_id = inbound_mail.message_id
+    new_email.linked_communication = None
     new_email.sent_or_received = "Sent" if is_sent else "Received"
     # set email creation date to the date of the email
     new_email.creation = new_email.date_and_time

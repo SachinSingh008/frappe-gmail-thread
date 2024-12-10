@@ -1,5 +1,5 @@
-frappe.ui.form.on("Email Account", {
-    custom_authorize_gmail: function (frm) {
+frappe.ui.form.on("Gmail Account", {
+    authorize_gmail: function (frm) {
         frappe.call({
             method: "frappe_gmail_thread.api.oauth.get_auth_url",
             args: {

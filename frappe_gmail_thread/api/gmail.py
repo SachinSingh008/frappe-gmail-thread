@@ -6,16 +6,15 @@ from urllib.parse import quote
 @frappe.whitelist()
 def is_gmail_configured():
     user = frappe.session.user
-    user_email = frappe.get_value("User", user, "email")
-    email_account = frappe.get_doc("Email Account", {"email_id": user_email})
-    if not frappe.has_permission("Email Account", email_account.name):
+    gmail_account = frappe.get_doc("Gmail Account", {"linked_user": user})
+    if not frappe.has_permission("Gmail Account", gmail_account.name):
         frappe.throw(_("You don't have permission to access this document"), frappe.PermissionError)
-    if not email_account.custom_gmail_enabled:
+    if not gmail_account.gmail_enabled:
         return {
             "configured": False,
-            "message": f"Please configure Gmail in <a href='/app/email-account/{quote(email_account.name)}'>Email Account</a>."
+            "message": f"Please configure Gmail in <a href='/app/email-account/{quote(gmail_account.name)}'>Email Account</a>."
         }
-    if email_account.custom_gmail_refresh_token and email_account.email_id == user_email:
+    if gmail_account.refresh_token and gmail_account.linked_user == user:
         return {
             "configured": True,
             "message": "Gmail is configured."

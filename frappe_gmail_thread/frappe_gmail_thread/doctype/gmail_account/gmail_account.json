@@ -1,0 +1,89 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-12-06 11:04:19.521246",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "gmail_enabled",
+  "html_wpmt",
+  "authorize_gmail",
+  "column_break_eiev",
+  "linked_user",
+  "authorization_code",
+  "refresh_token",
+  "last_historyid"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "gmail_enabled",
+   "fieldtype": "Check",
+   "label": "Gmail Enabled"
+  },
+  {
+   "depends_on": "eval:doc.gmail_enabled == true && !doc.__unsaved;",
+   "fieldname": "authorize_gmail",
+   "fieldtype": "Button",
+   "label": "Authorize Gmail"
+  },
+  {
+   "fieldname": "column_break_eiev",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "authorization_code",
+   "fieldtype": "Password",
+   "label": "Authorization Code"
+  },
+  {
+   "fieldname": "refresh_token",
+   "fieldtype": "Password",
+   "label": "Refresh Token"
+  },
+  {
+   "depends_on": "eval:doc.__unsaved == 1;",
+   "fieldname": "html_wpmt",
+   "fieldtype": "HTML",
+   "options": "Save the form to Authorize Gmail."
+  },
+  {
+   "fieldname": "last_historyid",
+   "fieldtype": "Int",
+   "label": "Synced Upto (History ID)"
+  },
+  {
+   "depends_on": "eval:doc.gmail_enabled == true;",
+   "fieldname": "linked_user",
+   "fieldtype": "Link",
+   "label": "Linked User",
+   "options": "User",
+   "read_only": 1,
+   "unique": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-12-09 22:44:00.798931",
+ "modified_by": "Administrator",
+ "module": "Frappe Gmail Thread",
+ "name": "Gmail Account",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
