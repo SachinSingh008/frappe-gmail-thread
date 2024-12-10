@@ -20,14 +20,6 @@ SCOPES = "https://www.googleapis.com/auth/gmail.readonly"
 
 class GmailThread(Document):
     pass
-    # def on_update(self):
-    #     if self.has_value_changed("reference_doctype") or self.has_value_changed("reference_name"):
-    #         for email in self.emails:
-    #             communication = frappe.get_doc("Communication", email.linked_communication)
-    #             communication.reference_doctype = self.reference_doctype
-    #             communication.reference_name = self.reference_name
-    #             communication.status = "Linked"
-    #             communication.save(ignore_permissions=True)
 
 
 def sync(user = None, history_id = None):
