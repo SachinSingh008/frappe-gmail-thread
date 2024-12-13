@@ -1,5 +1,5 @@
 import frappe
-from frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_thread.gmail_thread import enable_pubsub
+from frappe_gmail_thread.api.oauth import enable_pubsub
 from frappe import _
 
 def enable_pubsub_everyday():

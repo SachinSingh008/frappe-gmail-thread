@@ -2,8 +2,8 @@ import json
 import frappe
 from frappe.email.receive import Email 
 import base64
+from frappe.utils.file_manager import save_file
 
-from frappe.email.receive import InboundMail
 import re
 from bs4 import BeautifulSoup
 
@@ -26,6 +26,10 @@ class GmailInboundMail(Email):
             for div in soup.find_all("div", class_="gmail_quote"):
                 div.decompose()
             return str(soup)
+        
+def html_to_text(html):
+    soup = BeautifulSoup(html, "html.parser")
+    return soup.get_text(separator=" ", strip=True)
 
 
 def find_gmail_thread(thread_id):
@@ -36,7 +40,7 @@ def find_gmail_thread(thread_id):
     return gmail_thread
     
 
-def create_new_email(email, gmail_account, append_to=None, gmail_thread = None):
+def create_new_email(email, gmail_account, gmail_thread):
     email_content = base64.urlsafe_b64decode(email['raw'].encode('ASCII')).decode('utf-8')
     email_object = GmailInboundMail(
                             content=email_content
@@ -62,7 +66,7 @@ def create_new_email(email, gmail_account, append_to=None, gmail_thread = None):
     new_email.cc = "" # TODO: Correct this
     new_email.bcc = "" # TODO: Correct this
     new_email.content = email_object.content
-    new_email.plain_content = email_object.text_content.strip()
+    new_email.plain_content = email_object.text_content.strip() or html_to_text(email_object.html_content)
     new_email.date_and_time = email_object.date
     new_email.sender_full_name = email_object.from_real_name
     new_email.read_receipt = False
@@ -73,6 +77,32 @@ def create_new_email(email, gmail_account, append_to=None, gmail_thread = None):
     new_email.email_message_id = email_object.message_id
     new_email.linked_communication = None
     new_email.sent_or_received = "Sent" if is_sent else "Received"
+    # save attachments to private files
+    attachments = []
+    for attachment in email_object.attachments:
+        file_name = attachment["fname"]
+        file_data = attachment["fcontent"]
+        file = save_file(file_name, file_data, "Gmail Thread", gmail_thread.name or gmail_thread.gmail_thread_id, is_private=1)
+        attachments.append({
+            "file_name": file.file_name,
+            "file_doc_name": file.name,
+            "file_url": file.file_url
+        })
+    new_email.attachments_data = json.dumps(attachments)
+    # new_email.attachments_data_html = """ # TODO: Make it work
+    # <table>
+    #     <thead>
+    #         <tr>
+    #             <th>File Name</th>
+    #             <th>URL</th>
+    #         </tr>
+    #     </thead>
+    #     <tbody>
+    #         {0}
+    #     </tbody>
+    # """.format(
+    #     "".join(["<tr><td>{0}</td><td><a href='{1}'>Open</a></td></tr>".format(attachment["file_name"], attachment["file_url"]) for attachment in attachments])
+    # )
     # set email creation date to the date of the email
     new_email.creation = new_email.date_and_time
     return new_email

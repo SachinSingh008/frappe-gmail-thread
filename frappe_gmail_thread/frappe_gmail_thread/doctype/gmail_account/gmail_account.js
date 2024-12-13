@@ -15,4 +15,22 @@ frappe.ui.form.on("Gmail Account", {
             },
         });
     },
+    fetch_labels: function (frm) {
+        // disable button
+        frm.set_df_property("fetch_labels", "read_only", 1);
+        frappe.call({
+            method: "frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_thread.gmail_thread.sync_labels",
+            args: {
+                account_name: frm.doc.name,
+            },
+            callback: function (r) {
+                frappe.msgprint("Labels fetched successfully.");
+                frm.reload_doc();
+            },
+            error: function (r) {
+                frappe.msgprint("Something went wrong. Please try again later, or report issue in GitHub issues.");
+                frm.reload_doc();
+            },
+        });
+    }
 });

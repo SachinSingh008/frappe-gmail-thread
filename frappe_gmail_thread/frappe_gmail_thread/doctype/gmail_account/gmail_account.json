@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:linked_user",
  "creation": "2024-12-06 11:04:19.521246",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -12,7 +13,10 @@
   "linked_user",
   "authorization_code",
   "refresh_token",
-  "last_historyid"
+  "last_historyid",
+  "labels_to_sync_section",
+  "labels",
+  "fetch_labels"
  ],
  "fields": [
   {
@@ -42,7 +46,7 @@
    "label": "Refresh Token"
   },
   {
-   "depends_on": "eval:doc.__unsaved == 1;",
+   "depends_on": "eval:doc.gmail_enabled == true && doc.__unsaved == 1;",
    "fieldname": "html_wpmt",
    "fieldtype": "HTML",
    "options": "Save the form to Authorize Gmail."
@@ -60,14 +64,30 @@
    "options": "User",
    "read_only": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "labels_to_sync_section",
+   "fieldtype": "Section Break",
+   "label": "Labels to Sync"
+  },
+  {
+   "fieldname": "fetch_labels",
+   "fieldtype": "Button",
+   "label": "Fetch Labels"
+  },
+  {
+   "fieldname": "labels",
+   "fieldtype": "Table",
+   "options": "Gmail Label"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-09 22:44:00.798931",
+ "modified": "2024-12-13 10:16:29.439695",
  "modified_by": "Administrator",
  "module": "Frappe Gmail Thread",
  "name": "Gmail Account",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_thread.gmail_thread import disable_pubsub, enable_pubsub
+from frappe_gmail_thread.api.oauth import disable_pubsub, enable_pubsub
 
 
 def on_update(doc, method = None):

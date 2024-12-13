@@ -79,3 +79,8 @@ function get_gthread_timeline_content(doc, allow_reply = true) {
     let communication_content = $(frappe.render_template("timeline_message_box", { doc }));
     return communication_content;
 }
+
+// frappe realtime on gthread_new_email, check if reference_doctype and reference_name matches with current form
+frappe.realtime.on("gthread_new_email", function(data) {
+    setup_gmail_threads_activity(cur_frm);
+});
