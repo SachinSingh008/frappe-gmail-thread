@@ -1,11 +1,11 @@
-import json
-import frappe
-from frappe.email.receive import Email 
 import base64
-from frappe.utils.file_manager import save_file
-
+import json
 import re
+
+import frappe
 from bs4 import BeautifulSoup
+from frappe.email.receive import Email
+from frappe.utils.file_manager import save_file
 
 
 class GmailInboundMail(Email):
@@ -15,7 +15,7 @@ class GmailInboundMail(Email):
         self.text_content = self.remove_quoted_replies(self.text_content, "text")
         self.html_content = self.remove_quoted_replies(self.html_content, "html")
         self.set_content_and_type()
-        
+
     def remove_quoted_replies(self, content, type):
         if type == "text":
             regex = r"(\n|^)(On(.|\n)*?wrote:)((.|\n)*)"
@@ -26,7 +26,8 @@ class GmailInboundMail(Email):
             for div in soup.find_all("div", class_="gmail_quote"):
                 div.decompose()
             return str(soup)
-        
+
+
 def html_to_text(html):
     soup = BeautifulSoup(html, "html.parser")
     return soup.get_text(separator=" ", strip=True)
@@ -38,13 +39,13 @@ def find_gmail_thread(thread_id):
     except frappe.DoesNotExistError:
         gmail_thread = None
     return gmail_thread
-    
+
 
 def create_new_email(email, gmail_account, gmail_thread):
-    email_content = base64.urlsafe_b64decode(email['raw'].encode('ASCII')).decode('utf-8')
-    email_object = GmailInboundMail(
-                            content=email_content
-                        )
+    email_content = base64.urlsafe_b64decode(email["raw"].encode("ASCII")).decode(
+        "utf-8"
+    )
+    email_object = GmailInboundMail(content=email_content)
     user = frappe.get_doc("User", gmail_account.linked_user)
     # check if email is sent or received
     is_sent = False
@@ -52,21 +53,25 @@ def create_new_email(email, gmail_account, gmail_thread):
         is_sent = True
 
     try:
-        email_ct = frappe.get_doc("Single Email CT", {"email_message_id": email_object.message_id})
+        email_ct = frappe.get_doc(
+            "Single Email CT", {"email_message_id": email_object.message_id}
+        )
         if email_ct:
             return email_ct
     except frappe.DoesNotExistError:
         pass
-    
+
     new_email = frappe.new_doc("Single Email CT")
     new_email.gmail_message_id = email["id"]
     new_email.subject = email_object.subject
     new_email.sender = email_object.from_email
     new_email.recipients = ""  # TODO: Correct this
-    new_email.cc = "" # TODO: Correct this
-    new_email.bcc = "" # TODO: Correct this
+    new_email.cc = ""  # TODO: Correct this
+    new_email.bcc = ""  # TODO: Correct this
     new_email.content = email_object.content
-    new_email.plain_content = email_object.text_content.strip() or html_to_text(email_object.html_content)
+    new_email.plain_content = email_object.text_content.strip() or html_to_text(
+        email_object.html_content
+    )
     new_email.date_and_time = email_object.date
     new_email.sender_full_name = email_object.from_real_name
     new_email.read_receipt = False
@@ -82,12 +87,20 @@ def create_new_email(email, gmail_account, gmail_thread):
     for attachment in email_object.attachments:
         file_name = attachment["fname"]
         file_data = attachment["fcontent"]
-        file = save_file(file_name, file_data, "Gmail Thread", gmail_thread.name or gmail_thread.gmail_thread_id, is_private=1)
-        attachments.append({
-            "file_name": file.file_name,
-            "file_doc_name": file.name,
-            "file_url": file.file_url
-        })
+        file = save_file(
+            file_name,
+            file_data,
+            "Gmail Thread",
+            gmail_thread.name or gmail_thread.gmail_thread_id,
+            is_private=1,
+        )
+        attachments.append(
+            {
+                "file_name": file.file_name,
+                "file_doc_name": file.name,
+                "file_url": file.file_url,
+            }
+        )
     new_email.attachments_data = json.dumps(attachments)
     # new_email.attachments_data_html = """ # TODO: Make it work
     # <table>

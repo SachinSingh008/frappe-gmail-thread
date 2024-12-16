@@ -165,21 +165,19 @@ fixtures = [
 # ---------------
 
 scheduler_events = {
-# 	"all": [
-# 		"frappe_gmail_thread.tasks.all"
-# 	],
-	"daily": [
-		"frappe_gmail_thread.tasks.daily.enable_pubsub_everyday"
-	],
-# 	"hourly": [
-# 		"frappe_gmail_thread.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"frappe_gmail_thread.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"frappe_gmail_thread.tasks.monthly"
-# 	],
+    # 	"all": [
+    # 		"frappe_gmail_thread.tasks.all"
+    # 	],
+    "daily": ["frappe_gmail_thread.tasks.daily.enable_pubsub_everyday"],
+    # 	"hourly": [
+    # 		"frappe_gmail_thread.tasks.hourly"
+    # 	],
+    # 	"weekly": [
+    # 		"frappe_gmail_thread.tasks.weekly"
+    # 	],
+    # 	"monthly": [
+    # 		"frappe_gmail_thread.tasks.monthly"
+    # 	],
 }
 
 # Testing
@@ -257,4 +255,3 @@ scheduler_events = {
 # default_log_clearing_doctypes = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
-
