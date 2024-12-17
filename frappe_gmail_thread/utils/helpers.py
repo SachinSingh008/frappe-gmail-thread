@@ -5,6 +5,7 @@ import re
 import frappe
 from bs4 import BeautifulSoup
 from frappe.email.receive import Email
+from frappe.utils import extract_email_id
 from frappe.utils.file_manager import save_file
 
 
@@ -15,6 +16,7 @@ class GmailInboundMail(Email):
         self.text_content = self.remove_quoted_replies(self.text_content, "text")
         self.html_content = self.remove_quoted_replies(self.html_content, "html")
         self.set_content_and_type()
+        self.set_to_and_cc()
 
     def remove_quoted_replies(self, content, type):
         if type == "text":
@@ -26,6 +28,22 @@ class GmailInboundMail(Email):
             for div in soup.find_all("div", class_="gmail_quote"):
                 div.decompose()
             return str(soup)
+
+    def set_to_and_cc(self):
+        """
+        Set the to, cc and bcc fields from the email content.
+        """
+        _to_email = self.mail.get("To")
+        _cc_email = self.mail.get("Cc")
+        _bcc_email = self.mail.get("Bcc")
+        self.to = self.get_email_list(_to_email)
+        self.cc = self.get_email_list(_cc_email)
+        self.bcc = self.get_email_list(_bcc_email)
+
+    def get_email_list(self, email):
+        if email:
+            return [extract_email_id(e) for e in email.split(",")]
+        return []
 
 
 def html_to_text(html):
@@ -57,7 +75,7 @@ def create_new_email(email, gmail_account, gmail_thread):
             "Single Email CT", {"email_message_id": email_object.message_id}
         )
         if email_ct:
-            return email_ct
+            return email_ct, email_object
     except frappe.DoesNotExistError:
         pass
 
@@ -65,9 +83,9 @@ def create_new_email(email, gmail_account, gmail_thread):
     new_email.gmail_message_id = email["id"]
     new_email.subject = email_object.subject
     new_email.sender = email_object.from_email
-    new_email.recipients = ""  # TODO: Correct this
-    new_email.cc = ""  # TODO: Correct this
-    new_email.bcc = ""  # TODO: Correct this
+    new_email.recipients = ", ".join(email_object.to).strip()
+    new_email.cc = ", ".join(email_object.cc).strip()
+    new_email.bcc = ", ".join(email_object.bcc).strip()
     new_email.content = email_object.content
     new_email.plain_content = email_object.text_content.strip() or html_to_text(
         email_object.html_content
@@ -118,4 +136,4 @@ def create_new_email(email, gmail_account, gmail_thread):
     # )
     # set email creation date to the date of the email
     new_email.creation = new_email.date_and_time
-    return new_email
+    return new_email, email_object

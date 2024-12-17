@@ -119,13 +119,13 @@ app_include_js = ["/assets/frappe_gmail_thread/js/activity.js"]
 # -----------
 # Permissions evaluated in scripted ways
 
-# permission_query_conditions = {
-# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
-# }
-#
-# has_permission = {
-# 	"Event": "frappe.desk.doctype.event.event.has_permission",
-# }
+permission_query_conditions = {
+    "Gmail Thread": "frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_thread.gmail_thread.get_permission_query_conditions",
+}
+
+has_permission = {
+    "Gmail Thread": "frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_thread.gmail_thread.has_permission",
+}
 
 # DocType Class
 # ---------------
@@ -159,6 +159,17 @@ fixtures = [
             ]
         ],
     },
+    # TODO: Q: Should we export permissions?
+    # {
+    #     "dt": "Custom DocPerm",
+    #     "filters": [
+    #         [
+    #             "parent",
+    #             "in",
+    #             ["Gmail Account", "Gmail Thread"],
+    #         ]
+    #     ],
+    # }
 ]
 
 # Scheduled Tasks

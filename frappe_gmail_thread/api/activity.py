@@ -29,17 +29,23 @@ def get_linked_gmail_threads(reference_doctype, reference_docname):
                     "bcc": email.bcc,
                     "creation": email.creation,
                     "subject": email.subject,
-                    "delivery_status": "",
+                    "delivery_status": (
+                        "Sent" if email.sent_or_received == "Sent" else "Received"
+                    ),
                     "_liked_by": thread._liked_by,
                     "reference_doctype": thread.reference_doctype,
                     "reference_name": thread.reference_name,
                     "read_by_recipient": email.read_by_recipient,
                     "rating": 0,  # TODO: add rating
                     "recipients": email.recipients,
-                    "attachments": [],  # TODO: add attachments
+                    "attachments": email.attachments_data,
                     "_url": thread.get_url(),
-                    "_doc_status": thread.docstatus,
-                    "_doc_status_indicator": "red",
+                    "_doc_status": (
+                        "Sent" if email.sent_or_received == "Sent" else "Received"
+                    ),
+                    "_doc_status_indicator": (
+                        "green" if email.sent_or_received == "Sent" else "blue"
+                    ),
                     "owner": thread.owner,
                     "user_full_name": user_full_name,
                 }

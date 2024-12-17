@@ -15,7 +15,8 @@
   "gmail_thread_id",
   "column_break_cmhm",
   "gmail_account",
-  "subject_of_first_mail"
+  "subject_of_first_mail",
+  "involved_users"
  ],
  "fields": [
   {
@@ -75,11 +76,17 @@
    "fieldtype": "Link",
    "label": "Gmail Account",
    "options": "Gmail Account"
+  },
+  {
+   "fieldname": "involved_users",
+   "fieldtype": "Table MultiSelect",
+   "label": "Involved Users",
+   "options": "Involved User"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-13 14:09:40.646469",
+ "modified": "2024-12-17 00:36:30.850683",
  "modified_by": "Administrator",
  "module": "Frappe Gmail Thread",
  "name": "Gmail Thread",

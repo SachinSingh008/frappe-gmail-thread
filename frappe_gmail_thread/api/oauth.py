@@ -154,9 +154,7 @@ def enable_pubsub(gmail_account):
         frappe.throw(_("Please configure PubSub in Google Settings."))
     gmail = get_gmail_object(gmail_account.name)
     topic = google_settings.custom_gmail_pubsub_topic
-    label_ids = [
-        x.label_id for x in gmail_account.labels if x.enabled
-    ]  # TODO: Give option to select folders, reference: sync function in this file
+    label_ids = [x.label_id for x in gmail_account.labels if x.enabled]
     if not label_ids:
         label_ids = [x.label_id for x in gmail_account.labels if x.enabled]
     if "SENT" not in label_ids:

@@ -6,6 +6,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "email_id",
   "gmail_enabled",
   "html_wpmt",
   "authorize_gmail",
@@ -38,11 +39,13 @@
   {
    "fieldname": "authorization_code",
    "fieldtype": "Password",
+   "hidden": 1,
    "label": "Authorization Code"
   },
   {
    "fieldname": "refresh_token",
    "fieldtype": "Password",
+   "hidden": 1,
    "label": "Refresh Token"
   },
   {
@@ -54,6 +57,7 @@
   {
    "fieldname": "last_historyid",
    "fieldtype": "Int",
+   "hidden": 1,
    "label": "Synced Upto (History ID)"
   },
   {
@@ -79,11 +83,17 @@
    "fieldname": "labels",
    "fieldtype": "Table",
    "options": "Gmail Label"
+  },
+  {
+   "fieldname": "email_id",
+   "fieldtype": "Data",
+   "label": "Email ID",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-13 10:16:29.439695",
+ "modified": "2024-12-17 02:50:40.358832",
  "modified_by": "Administrator",
  "module": "Frappe Gmail Thread",
  "name": "Gmail Account",

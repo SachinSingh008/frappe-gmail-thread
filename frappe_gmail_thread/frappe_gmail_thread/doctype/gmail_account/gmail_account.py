@@ -15,6 +15,7 @@ from frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_thread.gmail_thread i
 class GmailAccount(Document):
     def before_insert(self):
         self.linked_user = frappe.session.user
+        self.email_id = frappe.get_value("User", self.linked_user, "email")
 
     def validate(self):
         if self.gmail_enabled:
@@ -29,6 +30,24 @@ class GmailAccount(Document):
                         "Please set Client ID and Client Secret in Google Settings to enable Gmail"
                     )
                 )
+
+    def has_value_changed(self, fieldname):
+        # check if fieldname is child table
+        if fieldname in ["labels"]:
+            old_value = self.get_doc_before_save().get(fieldname)
+            new_value = self.get(fieldname)
+            if old_value and new_value:
+                if len(old_value) != len(new_value):
+                    return True
+                old_names = [d.name for d in old_value]
+                new_names = [d.name for d in new_value]
+                if set(old_names) != set(new_names):
+                    return True
+                return False
+            if not old_value and not new_value:
+                return False
+            return True
+        return super().has_value_changed(fieldname)
 
     def on_update(self):
         if self.linked_user != frappe.session.user:
@@ -65,14 +84,8 @@ class GmailAccount(Document):
                         frappe.msgprint(
                             _("Disabled Realtime Sync for {0}").format(self.linked_user)
                         )
-        if self.has_value_changed("labels") and not self.has_value_changed(
-            "last_historyid"
-        ):
-            if (
-                self.gmail_enabled
-                and self.refresh_token
-                and not self.has_value_changed("refresh_token")
-            ):
+        if self.has_value_changed("labels"):
+            if self.gmail_enabled and self.refresh_token:
                 has_labels = False
                 for label in self.labels:
                     if label.enabled:

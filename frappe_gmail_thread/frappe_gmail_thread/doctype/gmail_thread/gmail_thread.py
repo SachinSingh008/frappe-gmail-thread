@@ -3,6 +3,7 @@
 
 
 import frappe
+import frappe.share
 import googleapiclient.errors
 from frappe import _
 from frappe.model.document import Document
@@ -14,7 +15,45 @@ SCOPES = "https://www.googleapis.com/auth/gmail.readonly"
 
 
 class GmailThread(Document):
-    pass
+    def has_value_changed(self, fieldname):
+        # check if fieldname is child table
+        if fieldname in ["involved_users"]:
+            old_value = self.get_doc_before_save().get(fieldname)
+            new_value = self.get(fieldname)
+            if old_value and new_value:
+                if len(old_value) != len(new_value):
+                    return True
+                old_names = [d.name for d in old_value]
+                new_names = [d.name for d in new_value]
+                if set(old_names) != set(new_names):
+                    return True
+                return False
+            if not old_value and not new_value:
+                return False
+            return True
+        return super().has_value_changed(fieldname)
+
+    def on_update(self):
+        if self.has_value_changed("involved_users"):
+            # give permission of all files to all involved users
+            attachments = frappe.get_all(
+                "File",
+                filters={
+                    "attached_to_doctype": "Gmail Thread",
+                    "attached_to_name": self.name,
+                },
+                fields=["name"],
+            )
+            for attachment in attachments:
+                for user in self.involved_users:
+                    if user.account == self.owner:
+                        continue
+                    frappe.share.add_docshare(
+                        "File",
+                        attachment.name,
+                        user.account,
+                        flags={"ignore_share_permission": True},
+                    )
 
 
 @frappe.whitelist(methods=["POST"])
@@ -73,6 +112,7 @@ def sync(user=None, history_id=None):
                     gmail_thread = frappe.new_doc("Gmail Thread")
                     gmail_thread.gmail_thread_id = thread_id
                     gmail_thread.gmail_account = gmail_account.name
+                involved_users = set()
                 for message in thread["messages"]:
                     try:
                         raw_email = (
@@ -83,10 +123,20 @@ def sync(user=None, history_id=None):
                         )
                     except googleapiclient.errors.HttpError:
                         continue
-                    email = create_new_email(raw_email, gmail_account, gmail_thread)
+                    email, email_object = create_new_email(
+                        raw_email, gmail_account, gmail_thread
+                    )
                     if not gmail_thread.subject_of_first_mail:
                         gmail_thread.subject_of_first_mail = email.subject
                         gmail_thread.creation = email.date_and_time
+                    involved_users.add(email_object.from_email)
+                    for recipient in email_object.to:
+                        involved_users.add(recipient)
+                    for recipient in email_object.cc:
+                        involved_users.add(recipient)
+                    for recipient in email_object.bcc:
+                        involved_users.add(recipient)
+                    update_involved_users(gmail_thread, involved_users)
                     gmail_thread.append("emails", email)
                     if int(message["historyId"]) > max_history_id:
                         max_history_id = int(message["historyId"])
@@ -159,10 +209,21 @@ def sync(user=None, history_id=None):
                             gmail_thread = frappe.new_doc("Gmail Thread")
                             gmail_thread.gmail_thread_id = thread_id
                             gmail_thread.gmail_account = gmail_account.name
-                        email = create_new_email(raw_email, gmail_account, gmail_thread)
+                        involved_users = set()
+                        email, email_object = create_new_email(
+                            raw_email, gmail_account, gmail_thread
+                        )
                         if not gmail_thread.subject_of_first_mail:
                             gmail_thread.subject_of_first_mail = email.subject
                             gmail_thread.creation = email.date_and_time
+                        involved_users.add(email_object.from_email)
+                        for recipient in email_object.to:
+                            involved_users.add(recipient)
+                        for recipient in email_object.cc:
+                            involved_users.add(recipient)
+                        for recipient in email_object.bcc:
+                            involved_users.add(recipient)
+                        update_involved_users(gmail_thread, involved_users)
                         gmail_thread.append("emails", email)
                         gmail_thread.save(ignore_permissions=True)
                         frappe.db.set_value(
@@ -184,3 +245,39 @@ def sync(user=None, history_id=None):
                         doctype=gmail_thread.reference_doctype,
                         docname=gmail_thread.reference_name,
                     )
+
+
+def update_involved_users(doc, involved_users):
+    involved_users = list(involved_users)
+    involved_users_linked = [x.account for x in doc.involved_users]
+    all_users = frappe.get_all(
+        "User", filters={"email": ["in", involved_users]}, fields=["name"]
+    )
+    for user in all_users:
+        if user.name not in involved_users_linked:
+            involved_user = frappe.get_doc(doctype="Involved User", account=user.name)
+            doc.append("involved_users", involved_user)
+
+
+def get_permission_query_conditions(user):
+    if not user:
+        user = frappe.session.user
+    if user == "Administrator":
+        return ""
+    return """
+        `tabGmail Thread`.name in (
+            select parent from `tabInvolved User`
+            where account = {user}
+        ) or `tabGmail Thread`.owner = {user}
+    """.format(user=frappe.db.escape(user))
+
+
+def has_permission(doc, ptype, user):
+    if user == "Administrator":
+        return True
+    if ptype in ("read", "write", "delete", "create"):
+        return frappe.db.exists(
+            "Involved User",
+            {"parent": doc.name, "account": user},
+        )
+    return False

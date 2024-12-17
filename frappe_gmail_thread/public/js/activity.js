@@ -19,7 +19,6 @@ const setup_gmail_threads_activity = function (frm) {
   });
 };
 
-// call before_load function when form is loaded but activity is not yet loaded
 $(document).on("form-refresh", function (event, frm) {
   frappe.ui.form.on(frm.doctype, {
     refresh: setup_gmail_threads_activity,
@@ -39,7 +38,7 @@ function add_gmail_threads_to_form(frm, gmail_threads) {
     all_emails.push(gmail_thread.sender);
   }
   const unique_emails = [...new Set(all_emails)];
-  // fetch user info from http://localhost/api/method/frappe.desk.form.load.get_user_info_for_viewers?users=[%22shivam.saini@rtcamp.com%22]
+
   frappe.call({
     method: "frappe.desk.form.load.get_user_info_for_viewers",
     args: {
@@ -60,15 +59,16 @@ function add_gmail_threads_to_form(frm, gmail_threads) {
           doctype: "Gmail Thread",
           id: `gmail-thread-${gmail_thread.name}`,
           name: gmail_thread.name,
+          delivery_status: gmail_thread.delivery_status,
         };
         communication_contents.push(t_data);
       }
-      timeline.add_timeline_items_based_on_creation(communication_contents);
+      add_timeline_items_based_on_creation(timeline, communication_contents);
     },
   });
 }
 
-function get_gthread_timeline_content(doc, allow_reply = true) {
+function get_gthread_timeline_content(doc) {
   doc._url = frappe.utils.get_form_link("Gmail Thread", doc.name);
   if (doc.attachments && typeof doc.attachments === "string") {
     doc.attachments = JSON.parse(doc.attachments);
@@ -78,6 +78,26 @@ function get_gthread_timeline_content(doc, allow_reply = true) {
   doc.content = frappe.dom.remove_script_and_style(doc.content);
   let communication_content = $(frappe.render_template("timeline_message_box", { doc }));
   return communication_content;
+}
+
+function add_timeline_items_based_on_creation(timeline, items) {
+  items.forEach((item) => {
+    let itemInserted = false; // Flag to track if the item was inserted
+
+    timeline.timeline_items_wrapper.find(".timeline-item").each((i, el) => {
+      let creation = $(el).attr("data-timestamp");
+      if (creation && new Date(creation) < new Date(item.creation)) {
+        $(el).before(timeline.get_timeline_item(item));
+        itemInserted = true; // Mark as inserted
+        return false; // Break the loop
+      }
+    });
+
+    // If the item was not inserted, add it to the beginning
+    if (!itemInserted) {
+      timeline.timeline_items_wrapper.prepend(timeline.get_timeline_item(item));
+    }
+  });
 }
 
 // TODO: Test realtime sync
