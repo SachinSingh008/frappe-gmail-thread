@@ -51,3 +51,12 @@ def get_linked_gmail_threads(reference_doctype, reference_docname):
                 }
             )
     return data
+
+
+@frappe.whitelist()
+def relink_gmail_thread(name, doctype, docname):
+    thread = frappe.get_doc("Gmail Thread", name)
+    thread.reference_doctype = doctype
+    thread.reference_name = docname
+    thread.save()
+    return thread.reference_name

@@ -13,6 +13,7 @@
   "reference_name",
   "reference_owner",
   "gmail_thread_id",
+  "status",
   "column_break_cmhm",
   "gmail_account",
   "subject_of_first_mail",
@@ -82,11 +83,21 @@
    "fieldtype": "Table MultiSelect",
    "label": "Involved Users",
    "options": "Involved User"
+  },
+  {
+   "default": "Open",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Open\nClosed\nLinked",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-17 00:36:30.850683",
+ "modified": "2024-12-17 11:33:41.630452",
  "modified_by": "Administrator",
  "module": "Frappe Gmail Thread",
  "name": "Gmail Thread",

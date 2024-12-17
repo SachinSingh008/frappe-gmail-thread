@@ -54,6 +54,30 @@ class GmailThread(Document):
                         user.account,
                         flags={"ignore_share_permission": True},
                     )
+        if self.has_value_changed("reference_doctype") and self.has_value_changed(
+            "reference_name"
+        ):
+            if self.reference_doctype and self.reference_name:
+                if self.status == "Open":
+                    self.status = "Linked"
+                    self.save(ignore_permissions=True)
+                # check if there is any other thread with same reference doctype and name
+                threads = frappe.get_all(
+                    "Gmail Thread",
+                    filters={
+                        "reference_doctype": self.reference_doctype,
+                        "reference_name": self.reference_name,
+                    },
+                    fields=["name"],
+                )
+                for thread in threads:
+                    if thread.name != self.name:
+                        frappe.msgprint(
+                            _(
+                                "The document is already linked with another Gmail Thread. This may cause confusion in the document timeline."
+                            )
+                        )
+                        break
 
 
 @frappe.whitelist(methods=["POST"])
