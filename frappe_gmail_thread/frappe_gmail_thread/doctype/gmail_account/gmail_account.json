@@ -75,11 +75,13 @@
    "label": "Labels to Sync"
   },
   {
+   "depends_on": "eval:doc.refresh_token;",
    "fieldname": "fetch_labels",
    "fieldtype": "Button",
    "label": "Fetch Labels"
   },
   {
+   "depends_on": "eval:doc.refresh_token;",
    "fieldname": "labels",
    "fieldtype": "Table",
    "options": "Gmail Label"
@@ -93,7 +95,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-17 02:50:40.358832",
+ "modified": "2024-12-18 16:41:44.830026",
  "modified_by": "Administrator",
  "module": "Frappe Gmail Thread",
  "name": "Gmail Account",

@@ -121,8 +121,9 @@ def sync(user=None, history_id=None):
     label_ids = [x.label_id for x in gmail_account.labels if x.enabled]
     if not label_ids:
         return
+    last_history_id = int(gmail_account.last_historyid)
     for label_id in label_ids:
-        if not history_id:
+        if not last_history_id:
             max_history_id = 0
             try:
                 threads = (
@@ -132,6 +133,8 @@ def sync(user=None, history_id=None):
                     .execute()
                 )
             except googleapiclient.errors.HttpError:
+                continue
+            if "threads" not in threads:
                 continue
             for thread in threads["threads"][::-1]:
                 thread_id = thread["id"]
@@ -212,7 +215,7 @@ def sync(user=None, history_id=None):
                     .list(
                         userId="me",
                         startHistoryId=history_id,
-                        historyTypes="messageAdded",
+                        historyTypes=["messageAdded", "labelAdded"],
                         labelId=label_id,
                     )
                     .execute()
@@ -220,7 +223,6 @@ def sync(user=None, history_id=None):
             except googleapiclient.errors.HttpError:
                 continue
             new_history_id = int(history["historyId"])
-            last_history_id = int(gmail_account.last_historyid)
             if new_history_id > last_history_id:
                 history = (
                     gmail.users()
@@ -228,7 +230,7 @@ def sync(user=None, history_id=None):
                     .list(
                         userId="me",
                         startHistoryId=last_history_id,
-                        historyTypes="messageAdded",
+                        historyTypes=["messageAdded", "labelAdded"],
                         labelId=label_id,
                     )
                     .execute()
