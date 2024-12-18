@@ -6,7 +6,6 @@ import frappe
 from bs4 import BeautifulSoup
 from frappe.email.receive import Email
 from frappe.utils import extract_email_id
-from frappe.utils.file_manager import save_file
 
 
 class GmailInboundMail(Email):
@@ -144,13 +143,17 @@ def process_attachments(new_email, gmail_thread, email_object):
     for attachment in email_object.attachments:
         file_name = attachment["fname"]
         file_data = attachment["fcontent"]
-        file = save_file(
-            file_name,
-            file_data,
-            "Gmail Thread",
-            gmail_thread.name or gmail_thread.gmail_thread_id,
-            is_private=1,
+        file = frappe.get_doc(
+            {
+                "doctype": "File",
+                "attached_to_doctype": "Gmail Thread",
+                "attached_to_name": gmail_thread.name or gmail_thread.gmail_thread_id,
+                "file_name": file_name,
+                "is_private": 1,
+                "content": file_data,
+            }
         )
+        file.save()
         attachments.append(
             {
                 "file_name": file.file_name,
