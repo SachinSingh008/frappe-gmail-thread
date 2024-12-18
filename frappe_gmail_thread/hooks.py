@@ -189,6 +189,8 @@ scheduler_events = {
     # 	"monthly": [
     # 		"frappe_gmail_thread.tasks.monthly"
     # 	],
+    # every 10 minutes
+    "*/10 * * * *": ["frappe_gmail_thread.tasks.sync.sync_emails"],
 }
 
 # Testing
