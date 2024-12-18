@@ -30,12 +30,14 @@
    "fieldname": "reference_doctype",
    "fieldtype": "Link",
    "label": "Reference Document Type",
+   "mandatory_depends_on": "reference_name",
    "options": "DocType"
   },
   {
    "fieldname": "reference_name",
    "fieldtype": "Dynamic Link",
    "label": "Reference Name",
+   "mandatory_depends_on": "reference_doctype",
    "options": "reference_doctype"
   },
   {
@@ -97,7 +99,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-17 11:33:41.630452",
+ "modified": "2024-12-18 18:30:18.865628",
  "modified_by": "Administrator",
  "module": "Frappe Gmail Thread",
  "name": "Gmail Thread",
