@@ -40,5 +40,10 @@ frappe.ui.form.on("Gmail Thread", {
         __(relink_title)
       );
     });
+    if (frm.doc.reference_doctype && frm.doc.reference_name) {
+      frm.add_custom_button(__("Open Linked Document"), function () {
+        frappe.set_route("Form", frm.doc.reference_doctype, frm.doc.reference_name);
+      });
+    }
   },
 });
