@@ -7,9 +7,14 @@ import frappe.share
 import googleapiclient.errors
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils import get_string_between
 
 from frappe_gmail_thread.api.oauth import get_gmail_object
-from frappe_gmail_thread.utils.helpers import create_new_email, find_gmail_thread
+from frappe_gmail_thread.utils.helpers import (
+    create_new_email,
+    find_gmail_thread,
+    process_attachments,
+)
 
 SCOPES = "https://www.googleapis.com/auth/gmail.readonly"
 
@@ -18,7 +23,9 @@ class GmailThread(Document):
     def has_value_changed(self, fieldname):
         # check if fieldname is child table
         if fieldname in ["involved_users"]:
-            old_value = self.get_doc_before_save().get(fieldname)
+            old_value = self.get_doc_before_save()
+            if old_value:
+                old_value = old_value.get(fieldname)
             new_value = self.get(fieldname)
             if old_value and new_value:
                 if len(old_value) != len(new_value):
@@ -128,14 +135,10 @@ def sync(user=None, history_id=None):
                 continue
             for thread in threads["threads"][::-1]:
                 thread_id = thread["id"]
-                gmail_thread = find_gmail_thread(thread_id)
                 thread = (
                     gmail.users().threads().get(userId="me", id=thread_id).execute()
                 )
-                if not gmail_thread:
-                    gmail_thread = frappe.new_doc("Gmail Thread")
-                    gmail_thread.gmail_thread_id = thread_id
-                    gmail_thread.gmail_account = gmail_account.name
+                gmail_thread = find_gmail_thread(thread_id)
                 involved_users = set()
                 for message in thread["messages"]:
                     try:
@@ -147,9 +150,24 @@ def sync(user=None, history_id=None):
                         )
                     except googleapiclient.errors.HttpError:
                         continue
-                    email, email_object = create_new_email(
-                        raw_email, gmail_account, gmail_thread
-                    )
+                    email, email_object = create_new_email(raw_email, gmail_account)
+                    if not gmail_thread:
+                        email_message_id = email_object.message_id
+                        email_references = email_object.mail.get("References")
+                        if email_references:
+                            email_references = [
+                                get_string_between("<", x, ">")
+                                for x in email_references.split()
+                            ]
+                        else:
+                            email_references = []
+                        gmail_thread = find_gmail_thread(
+                            thread_id, [email_message_id] + email_references
+                        )
+                    if not gmail_thread:
+                        gmail_thread = frappe.new_doc("Gmail Thread")
+                        gmail_thread.gmail_thread_id = thread_id
+                        gmail_thread.gmail_account = gmail_account.name
                     if not gmail_thread.subject_of_first_mail:
                         gmail_thread.subject_of_first_mail = email.subject
                         gmail_thread.creation = email.date_and_time
@@ -161,6 +179,7 @@ def sync(user=None, history_id=None):
                     for recipient in email_object.bcc:
                         involved_users.add(recipient)
                     update_involved_users(gmail_thread, involved_users)
+                    process_attachments(email, gmail_thread, email_object)
                     gmail_thread.append("emails", email)
                     if int(message["historyId"]) > max_history_id:
                         max_history_id = int(message["historyId"])
@@ -229,18 +248,30 @@ def sync(user=None, history_id=None):
                             continue
                         thread_id = message["threadId"]
                         gmail_thread = find_gmail_thread(thread_id)
+                        involved_users = set()
+                        email, email_object = create_new_email(raw_email, gmail_account)
+                        if not gmail_thread:
+                            email_message_id = email_object.message_id
+                            email_references = email_object.mail.get("References")
+                            if email_references:
+                                email_references = [
+                                    get_string_between("<", x, ">")
+                                    for x in email_references.split()
+                                ]
+                            else:
+                                email_references = []
+                            gmail_thread = find_gmail_thread(
+                                thread_id, [email_message_id] + email_references
+                            )
                         if not gmail_thread:
                             gmail_thread = frappe.new_doc("Gmail Thread")
                             gmail_thread.gmail_thread_id = thread_id
                             gmail_thread.gmail_account = gmail_account.name
-                        involved_users = set()
-                        email, email_object = create_new_email(
-                            raw_email, gmail_account, gmail_thread
-                        )
                         if not gmail_thread.subject_of_first_mail:
                             gmail_thread.subject_of_first_mail = email.subject
                             gmail_thread.creation = email.date_and_time
                         involved_users.add(email_object.from_email)
+                        process_attachments(email, gmail_thread, email_object)
                         for recipient in email_object.to:
                             involved_users.add(recipient)
                         for recipient in email_object.cc:
@@ -275,7 +306,9 @@ def update_involved_users(doc, involved_users):
     involved_users = list(involved_users)
     involved_users_linked = [x.account for x in doc.involved_users]
     all_users = frappe.get_all(
-        "User", filters={"email": ["in", involved_users]}, fields=["name"]
+        "User",
+        filters={"email": ["in", involved_users], "user_type": ["!=", "Website User"]},
+        fields=["name"],
     )
     for user in all_users:
         if user.name not in involved_users_linked:

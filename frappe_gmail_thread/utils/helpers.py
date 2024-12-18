@@ -51,24 +51,43 @@ def html_to_text(html):
     return soup.get_text(separator=" ", strip=True)
 
 
-def find_gmail_thread(thread_id):
+def find_gmail_thread(thread_id, message_ids: list = None):
     try:
         gmail_thread = frappe.get_doc("Gmail Thread", {"gmail_thread_id": thread_id})
     except frappe.DoesNotExistError:
         gmail_thread = None
+        if message_ids:
+            for message_id in message_ids:
+                try:
+                    single_email_ct = frappe.get_doc(
+                        "Single Email CT", {"email_message_id": message_id}
+                    )
+                    if single_email_ct:
+                        gmail_thread = frappe.get_doc(
+                            "Gmail Thread", single_email_ct.parent
+                        )
+                        break
+                except frappe.DoesNotExistError:
+                    pass
     return gmail_thread
 
 
-def create_new_email(email, gmail_account, gmail_thread):
+def create_new_email(email, gmail_account):
     email_content = base64.urlsafe_b64decode(email["raw"].encode("ASCII")).decode(
         "utf-8"
     )
     email_object = GmailInboundMail(content=email_content)
-    user = frappe.get_doc("User", gmail_account.linked_user)
     # check if email is sent or received
     is_sent = False
-    if email_object.from_email == user.email:
-        is_sent = True
+    # check if there is a user (not website user) with the same email as the sender in frappe, if yes, then it is a sent email
+    is_sent = (
+        frappe.db.exists(
+            "User",
+            {"email": email_object.from_email, "user_type": ["!=", "Website User"]},
+        )
+        and True
+        or False
+    )
 
     try:
         email_ct = frappe.get_doc(
@@ -101,6 +120,26 @@ def create_new_email(email, gmail_account, gmail_thread):
     new_email.linked_communication = None
     new_email.sent_or_received = "Sent" if is_sent else "Received"
     # save attachments to private files
+    # new_email.attachments_data_html = """ # TODO: Make it work
+    # <table>
+    #     <thead>
+    #         <tr>
+    #             <th>File Name</th>
+    #             <th>URL</th>
+    #         </tr>
+    #     </thead>
+    #     <tbody>
+    #         {0}
+    #     </tbody>
+    # """.format(
+    #     "".join(["<tr><td>{0}</td><td><a href='{1}'>Open</a></td></tr>".format(attachment["file_name"], attachment["file_url"]) for attachment in attachments])
+    # )
+    # set email creation date to the date of the email
+    new_email.creation = new_email.date_and_time
+    return new_email, email_object
+
+
+def process_attachments(new_email, gmail_thread, email_object):
     attachments = []
     for attachment in email_object.attachments:
         file_name = attachment["fname"]
@@ -120,20 +159,3 @@ def create_new_email(email, gmail_account, gmail_thread):
             }
         )
     new_email.attachments_data = json.dumps(attachments)
-    # new_email.attachments_data_html = """ # TODO: Make it work
-    # <table>
-    #     <thead>
-    #         <tr>
-    #             <th>File Name</th>
-    #             <th>URL</th>
-    #         </tr>
-    #     </thead>
-    #     <tbody>
-    #         {0}
-    #     </tbody>
-    # """.format(
-    #     "".join(["<tr><td>{0}</td><td><a href='{1}'>Open</a></td></tr>".format(attachment["file_name"], attachment["file_url"]) for attachment in attachments])
-    # )
-    # set email creation date to the date of the email
-    new_email.creation = new_email.date_and_time
-    return new_email, email_object

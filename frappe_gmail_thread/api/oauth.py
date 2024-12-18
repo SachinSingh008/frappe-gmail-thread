@@ -165,7 +165,6 @@ def enable_pubsub(gmail_account):
         "labelFilterBehavior": "include",
     }
     gmail.users().watch(userId="me", body=body).execute()
-    print("PubSub enabled")
 
 
 def disable_pubsub(gmail_account):

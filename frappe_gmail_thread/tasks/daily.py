@@ -14,7 +14,12 @@ def enable_pubsub_everyday():
         return
 
     gmail_accounts = frappe.get_all(
-        "Gmail Account", filters={"gmail_enabled": 1}, fields=["*"]
+        "Gmail Account", filters={"gmail_enabled": 1}, fields=["name"]
     )
     for gmail_account in gmail_accounts:
-        enable_pubsub(gmail_account)
+        gaccount = frappe.get_doc("Gmail Account", gmail_account.name)
+        try:
+            enable_pubsub(gaccount)
+        except Exception as e:
+            frappe.log_error(title="PubSub Error", message=e)
+            continue

@@ -34,13 +34,15 @@ class GmailAccount(Document):
     def has_value_changed(self, fieldname):
         # check if fieldname is child table
         if fieldname in ["labels"]:
-            old_value = self.get_doc_before_save().get(fieldname)
+            old_value = self.get_doc_before_save()
+            if old_value:
+                old_value = old_value.get(fieldname)
             new_value = self.get(fieldname)
             if old_value and new_value:
                 if len(old_value) != len(new_value):
                     return True
-                old_names = [d.name for d in old_value]
-                new_names = [d.name for d in new_value]
+                old_names = [(d.name, d.enabled) for d in old_value]
+                new_names = [(d.name, d.enabled) for d in new_value]
                 if set(old_names) != set(new_names):
                     return True
                 return False
@@ -66,24 +68,23 @@ class GmailAccount(Document):
                 )
         if self.has_value_changed("refresh_token") and self.refresh_token:
             sync_labels(self.name)
-            if not self.get_doc_before_save().refresh_token:
-                google_settings = frappe.get_single("Google Settings")
-                if (
-                    google_settings.custom_gmail_sync_in_realtime
-                    and google_settings.custom_gmail_pubsub_topic
-                ):
-                    if self.gmail_enabled:
-                        # start pubsub
-                        enable_pubsub(self)
-                        frappe.msgprint(
-                            _("Enabled Realtime Sync for {0}").format(self.linked_user)
-                        )
-                    else:
-                        # stop pubsub
-                        disable_pubsub(self)
-                        frappe.msgprint(
-                            _("Disabled Realtime Sync for {0}").format(self.linked_user)
-                        )
+            google_settings = frappe.get_single("Google Settings")
+            if (
+                google_settings.custom_gmail_sync_in_realtime
+                and google_settings.custom_gmail_pubsub_topic
+            ):
+                if self.gmail_enabled:
+                    # start pubsub
+                    enable_pubsub(self)
+                    frappe.msgprint(
+                        _("Enabled Realtime Sync for {0}").format(self.linked_user)
+                    )
+                else:
+                    # stop pubsub
+                    disable_pubsub(self)
+                    frappe.msgprint(
+                        _("Disabled Realtime Sync for {0}").format(self.linked_user)
+                    )
         if self.has_value_changed("labels"):
             if self.gmail_enabled and self.refresh_token:
                 has_labels = False
