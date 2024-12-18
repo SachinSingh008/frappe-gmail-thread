@@ -89,13 +89,13 @@
   {
    "fieldname": "email_id",
    "fieldtype": "Data",
-   "label": "Email ID",
+   "label": "Email Address",
    "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-18 16:41:44.830026",
+ "modified": "2024-12-18 17:21:16.960150",
  "modified_by": "Administrator",
  "module": "Frappe Gmail Thread",
  "name": "Gmail Account",
