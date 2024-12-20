@@ -5,8 +5,8 @@
 2. Install the app on the site.
 
 ```bash
-bench get-app https://github.com/rtCamp/frappe-slack-connector
-bench --site [site-name] install-app frappe_slack_connector
+bench get-app https://github.com/rtCamp/frappe-gmail-thread
+bench --site [site-name] install-app frappe_gmail_thread
 ```
 
 2. Set up [pre-commit](https://pre-commit.com/) in the app.
