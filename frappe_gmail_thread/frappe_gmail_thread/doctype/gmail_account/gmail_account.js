@@ -34,4 +34,11 @@ frappe.ui.form.on("Gmail Account", {
       },
     });
   },
+  refresh: function (frm) {
+    // if email_id is empty, set it as current user's email
+    if (!frm.doc.email_id) {
+      user_email = frappe.session.user_email;
+      frm.set_value("email_id", user_email);
+    }
+  },
 });

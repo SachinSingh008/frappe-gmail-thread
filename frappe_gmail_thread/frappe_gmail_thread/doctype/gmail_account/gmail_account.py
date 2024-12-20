@@ -17,6 +17,16 @@ class GmailAccount(Document):
         self.linked_user = frappe.session.user
         self.email_id = frappe.get_value("User", self.linked_user, "email")
 
+    def on_trash(self):
+        if not self.gmail_enabled:
+            return
+        if not self.refresh_token:
+            return
+        google_settings = frappe.get_single("Google Settings")
+        if not google_settings.custom_gmail_pubsub_topic:
+            return
+        disable_pubsub(self)
+
     def validate(self):
         if self.gmail_enabled:
             google_settings = frappe.get_single("Google Settings")
