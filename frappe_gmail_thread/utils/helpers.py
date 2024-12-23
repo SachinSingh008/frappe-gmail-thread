@@ -4,8 +4,8 @@ import re
 
 import frappe
 from bs4 import BeautifulSoup
-from frappe.email.receive import Email
-from frappe.utils import extract_email_id
+from frappe.email.receive import Email, MaxFileSizeReachedError
+from frappe.utils import extract_email_id, sanitize_html
 
 
 class GmailInboundMail(Email):
@@ -16,6 +16,17 @@ class GmailInboundMail(Email):
         self.html_content = self.remove_quoted_replies(self.html_content, "html")
         self.set_content_and_type()
         self.set_to_and_cc()
+
+    def replace_inline_images(self, attachments):
+        # replace inline images
+        content = self.content
+        for file in json.loads(attachments):
+            file = frappe.get_doc("File", file["file_doc_name"])
+            if self.cid_map.get(file.name):
+                content = content.replace(
+                    f"cid:{self.cid_map[file.name]}", file.unique_url
+                )
+        return content
 
     def remove_quoted_replies(self, content, type):
         if type == "text":
@@ -71,6 +82,10 @@ def find_gmail_thread(thread_id, message_ids: list = None):
     return gmail_thread
 
 
+class AlreadyExistsError(Exception):
+    pass
+
+
 def create_new_email(email, gmail_account):
     email_content = base64.urlsafe_b64decode(email["raw"].encode("ASCII")).decode(
         "utf-8"
@@ -93,7 +108,7 @@ def create_new_email(email, gmail_account):
             "Single Email CT", {"email_message_id": email_object.message_id}
         )
         if email_ct:
-            return email_ct, email_object
+            raise AlreadyExistsError
     except frappe.DoesNotExistError:
         pass
 
@@ -138,27 +153,48 @@ def create_new_email(email, gmail_account):
     return new_email, email_object
 
 
+def replace_inline_images(new_email, email_object):
+    if new_email.attachments_data:
+        new_email.content = sanitize_html(
+            email_object.replace_inline_images(new_email.attachments_data)
+        )
+
+
 def process_attachments(new_email, gmail_thread, email_object):
     attachments = []
     for attachment in email_object.attachments:
-        file_name = attachment["fname"]
-        file_data = attachment["fcontent"]
-        file = frappe.get_doc(
-            {
-                "doctype": "File",
-                "attached_to_doctype": "Gmail Thread",
-                "attached_to_name": gmail_thread.name or gmail_thread.gmail_thread_id,
-                "file_name": file_name,
-                "is_private": 1,
-                "content": file_data,
-            }
-        )
-        file.save()
-        attachments.append(
-            {
-                "file_name": file.file_name,
-                "file_doc_name": file.name,
-                "file_url": file.file_url,
-            }
-        )
+        try:
+            _file = frappe.get_doc(
+                {
+                    "doctype": "File",
+                    "file_name": attachment["fname"],
+                    "attached_to_doctype": "Gmail Thread",
+                    "attached_to_name": gmail_thread.name
+                    or gmail_thread.gmail_thread_id,
+                    "is_private": 1,
+                    "content": attachment["fcontent"],
+                }
+            )
+            _file.save()
+            attachments.append(
+                {
+                    "file_name": _file.file_name,
+                    "file_doc_name": _file.name,
+                    "file_url": _file.file_url,
+                }
+            )
+
+            if attachment["fname"] in email_object.cid_map:
+                email_object.cid_map[_file.name] = email_object.cid_map[
+                    attachment["fname"]
+                ]
+
+        except MaxFileSizeReachedError:
+            # WARNING: bypass max file size exception
+            pass
+        except frappe.FileAlreadyAttachedException:
+            pass
+        except frappe.DuplicateEntryError:
+            # same file attached twice??
+            pass
     new_email.attachments_data = json.dumps(attachments)

@@ -11,9 +11,11 @@ from frappe.utils import get_string_between
 
 from frappe_gmail_thread.api.oauth import get_gmail_object
 from frappe_gmail_thread.utils.helpers import (
+    AlreadyExistsError,
     create_new_email,
     find_gmail_thread,
     process_attachments,
+    replace_inline_images,
 )
 
 SCOPES = "https://www.googleapis.com/auth/gmail.readonly"
@@ -153,7 +155,10 @@ def sync(user=None, history_id=None):
                         )
                     except googleapiclient.errors.HttpError:
                         continue
-                    email, email_object = create_new_email(raw_email, gmail_account)
+                    try:
+                        email, email_object = create_new_email(raw_email, gmail_account)
+                    except AlreadyExistsError:
+                        continue
                     if not gmail_thread:
                         email_message_id = email_object.message_id
                         email_references = email_object.mail.get("References")
@@ -183,6 +188,7 @@ def sync(user=None, history_id=None):
                         involved_users.add(recipient)
                     update_involved_users(gmail_thread, involved_users)
                     process_attachments(email, gmail_thread, email_object)
+                    replace_inline_images(email, email_object)
                     gmail_thread.append("emails", email)
                     if int(message["historyId"]) > max_history_id:
                         max_history_id = int(message["historyId"])
@@ -251,7 +257,12 @@ def sync(user=None, history_id=None):
                         thread_id = message["threadId"]
                         gmail_thread = find_gmail_thread(thread_id)
                         involved_users = set()
-                        email, email_object = create_new_email(raw_email, gmail_account)
+                        try:
+                            email, email_object = create_new_email(
+                                raw_email, gmail_account
+                            )
+                        except AlreadyExistsError:
+                            continue
                         if not gmail_thread:
                             email_message_id = email_object.message_id
                             email_references = email_object.mail.get("References")
@@ -274,6 +285,7 @@ def sync(user=None, history_id=None):
                             gmail_thread.creation = email.date_and_time
                         involved_users.add(email_object.from_email)
                         process_attachments(email, gmail_thread, email_object)
+                        replace_inline_images(email, email_object)
                         for recipient in email_object.to:
                             involved_users.add(recipient)
                         for recipient in email_object.cc:
