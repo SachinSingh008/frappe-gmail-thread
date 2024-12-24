@@ -25,6 +25,7 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Label Name",
+   "read_only": 1,
    "reqd": 1
   },
   {
@@ -32,13 +33,14 @@
    "fieldname": "label_id",
    "fieldtype": "Data",
    "label": "Label ID",
+   "read_only": 1,
    "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-12-13 10:37:28.605912",
+ "modified": "2024-12-24 20:16:31.700712",
  "modified_by": "Administrator",
  "module": "Frappe Gmail Thread",
  "name": "Gmail Label",

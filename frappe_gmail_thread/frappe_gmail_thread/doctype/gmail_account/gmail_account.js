@@ -40,5 +40,14 @@ frappe.ui.form.on("Gmail Account", {
       user_email = frappe.session.user_email;
       frm.set_value("email_id", user_email);
     }
+    if (frm.doc.refresh_token) {
+      frm.add_custom_button(__("Fetch Labels"), function () {
+        frm.events.fetch_labels(frm);
+      });
+    }
+    frm.fields_dict.labels.$wrapper.find(".grid-row-check").hide();
+  },
+  onload(frm) {
+    frm.get_field("labels").grid.cannot_add_rows = true;
   },
 });

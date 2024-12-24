@@ -99,7 +99,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-18 18:30:18.865628",
+ "modified": "2024-12-24 20:06:51.533156",
  "modified_by": "Administrator",
  "module": "Frappe Gmail Thread",
  "name": "Gmail Thread",
@@ -114,7 +114,21 @@
    "print": 1,
    "read": 1,
    "report": 1,
+   "role": "Desk User",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
    "role": "System Manager",
+   "select": 1,
    "share": 1,
    "write": 1
   }
