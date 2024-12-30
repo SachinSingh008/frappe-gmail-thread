@@ -2,6 +2,8 @@
 # For license information, please see license.txt
 
 # import frappe
+import json
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -103,11 +105,38 @@ class GmailAccount(Document):
                         has_labels = True
                         break
                 if has_labels:
-                    enable_pubsub(self)
-                    frappe.enqueue(
-                        "frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_thread.gmail_thread.sync",
-                        user=self.linked_user,
-                        queue="long",
+                    frappe.msgprint(
+                        _(
+                            "The following labels will be synced in the background. Please confirm if you want to proceed:<br><br> - {0}"
+                        ).format(
+                            "<br> - ".join(
+                                [
+                                    label.label_name
+                                    for label in self.labels
+                                    if label.enabled
+                                ]
+                            )
+                        ),
+                        "Confirm Sync",
+                        primary_action={
+                            "label": _("Proceed"),
+                            "server_action": "frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_account.gmail_account.sync_labels_api",
+                            "args": {"doc_name": self.name},
+                            "hide_on_success": True,
+                        },
                     )
                 else:
                     frappe.msgprint(_("Please select at least one label."))
+
+
+@frappe.whitelist()  # nosemgrep
+def sync_labels_api(args):
+    args = json.loads(args)
+    doc = frappe.get_doc("Gmail Account", args.get("doc_name"))
+    frappe.msgprint(_("Sync started in the background."), alert=True)
+    enable_pubsub(doc)
+    frappe.enqueue(
+        "frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_thread.gmail_thread.sync",
+        user=doc.linked_user,
+        queue="long",
+    )
