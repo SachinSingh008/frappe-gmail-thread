@@ -24,7 +24,7 @@ function page_changed(event) {
             })
             .then((r) => {
               const user_info = r.message;
-              if (!user_info) return;
+              if ($.isEmptyObject(user_info)) return;
               frappe.update_user_info(user_info);
               frm.timeline.refresh();
             });
