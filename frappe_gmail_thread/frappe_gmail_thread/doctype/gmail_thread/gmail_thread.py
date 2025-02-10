@@ -192,23 +192,24 @@ def sync(user=None, history_id=None):
                     gmail_thread.append("emails", email)
                     if int(message["historyId"]) > max_history_id:
                         max_history_id = int(message["historyId"])
-                gmail_thread.save(ignore_permissions=True)
-                frappe.db.set_value(
-                    "Gmail Thread",
-                    gmail_thread.name,
-                    "modified",
-                    email.date_and_time,
-                    update_modified=False,
-                )
-                # set owner to linked user
-                frappe.db.set_value(
-                    "Gmail Thread",
-                    gmail_thread.name,
-                    "owner",
-                    gmail_account.linked_user,
-                    modified_by=gmail_account.linked_user,
-                    update_modified=False,
-                )
+                if gmail_thread:
+                    gmail_thread.save(ignore_permissions=True)
+                    frappe.db.set_value(
+                        "Gmail Thread",
+                        gmail_thread.name,
+                        "modified",
+                        email.date_and_time,
+                        update_modified=False,
+                    )
+                    # set owner to linked user
+                    frappe.db.set_value(
+                        "Gmail Thread",
+                        gmail_thread.name,
+                        "owner",
+                        gmail_account.linked_user,
+                        modified_by=gmail_account.linked_user,
+                        update_modified=False,
+                    )
             gmail_account.reload()
             gmail_account.last_historyid = max_history_id
             gmail_account.save(ignore_permissions=True)
@@ -242,6 +243,7 @@ def sync(user=None, history_id=None):
                 )
                 if "history" not in history:
                     return
+                updated_docs = set()
                 for history in history["history"]:
                     for message in history["messages"]:
                         try:
@@ -301,18 +303,28 @@ def sync(user=None, history_id=None):
                             email.date_and_time,
                             update_modified=False,
                         )
+                        # if gmail thread has a reference doctype and name, then publish real-time activity
+                        if (
+                            gmail_thread.reference_doctype
+                            and gmail_thread.reference_name
+                        ):
+                            updated_docs.add(
+                                (
+                                    gmail_thread.reference_doctype,
+                                    gmail_thread.reference_name,
+                                )
+                            )
 
                 gmail_account.reload()
                 gmail_account.last_historyid = new_history_id
                 gmail_account.save(ignore_permissions=True)
-
-                # if gmail thread has a reference doctype and name, then publish real-time activity
-                if gmail_thread.reference_doctype and gmail_thread.reference_name:
-                    frappe.publish_realtime(
-                        "gthread_new_email",
-                        doctype=gmail_thread.reference_doctype,
-                        docname=gmail_thread.reference_name,
-                    )
+                if updated_docs:
+                    for doctype, docname in updated_docs:
+                        frappe.publish_realtime(
+                            "gthread_new_email",
+                            doctype=doctype,
+                            docname=docname,
+                        )
 
 
 def update_involved_users(doc, involved_users):

@@ -30,6 +30,10 @@ function page_changed(event) {
                 frm.timeline.refresh();
               });
           }
+          frappe.realtime.on("gthread_new_email", function (data) {
+            console.log("Received new email");
+            frm.timeline.refresh();
+          });
         },
       });
     }
