@@ -212,7 +212,6 @@ def sync(user=None, history_id=None):
             gmail_account.reload()
             gmail_account.last_historyid = max_history_id
             gmail_account.save(ignore_permissions=True)
-            gmail_thread.notify_update()
         else:
             try:
                 history = (
@@ -306,7 +305,7 @@ def sync(user=None, history_id=None):
                 gmail_account.reload()
                 gmail_account.last_historyid = new_history_id
                 gmail_account.save(ignore_permissions=True)
-                gmail_thread.notify_update()
+
                 # if gmail thread has a reference doctype and name, then publish real-time activity
                 if gmail_thread.reference_doctype and gmail_thread.reference_name:
                     frappe.publish_realtime(

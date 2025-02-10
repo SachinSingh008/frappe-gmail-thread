@@ -8,26 +8,28 @@ function page_changed(event) {
     if (route[0] == "Form") {
       frappe.ui.form.on(route[1], {
         refresh: function (frm) {
-          let gthread_users = new Set();
-          for (let activity of frm.timeline.doc_info.additional_timeline_content) {
-            if (activity.doctype === "Gmail Thread") {
-              gthread_users.add(activity.owner);
+          if (frm.timeline.doc_info.additional_timeline_content) {
+            let gthread_users = new Set();
+            for (let activity of frm.timeline.doc_info.additional_timeline_content) {
+              if (activity.doctype === "Gmail Thread") {
+                gthread_users.add(activity.owner);
+              }
             }
+            gthread_users = Array.from(gthread_users);
+            frappe
+              .call({
+                method: "frappe.desk.form.load.get_user_info_for_viewers",
+                args: {
+                  users: JSON.stringify(gthread_users),
+                },
+              })
+              .then((r) => {
+                const user_info = r.message;
+                if ($.isEmptyObject(user_info)) return;
+                frappe.update_user_info(user_info);
+                frm.timeline.refresh();
+              });
           }
-          gthread_users = Array.from(gthread_users);
-          frappe
-            .call({
-              method: "frappe.desk.form.load.get_user_info_for_viewers",
-              args: {
-                users: JSON.stringify(gthread_users),
-              },
-            })
-            .then((r) => {
-              const user_info = r.message;
-              if ($.isEmptyObject(user_info)) return;
-              frappe.update_user_info(user_info);
-              frm.timeline.refresh();
-            });
         },
       });
     }

@@ -7,7 +7,13 @@ from frappe import _
 @frappe.whitelist()
 def is_gmail_configured():
     user = frappe.session.user
-    gmail_account = frappe.get_doc("Gmail Account", {"linked_user": user})
+    try:
+        gmail_account = frappe.get_doc("Gmail Account", {"linked_user": user})
+    except frappe.DoesNotExistError:
+        return {
+            "configured": False,
+            "message": f"Gmail Account not found for {user}. Please configure Gmail in <a href='/app/gmail-account'>Gmail Account</a>.",
+        }
     if not frappe.has_permission(
         doctype="Gmail Account", doc=gmail_account.name, ptype="read"
     ):
