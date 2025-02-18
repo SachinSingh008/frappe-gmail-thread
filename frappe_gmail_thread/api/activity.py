@@ -16,7 +16,6 @@ def get_linked_gmail_threads(doctype, docname):
     data = []
     for thread in gmail_threads:
         thread = frappe.get_doc("Gmail Thread", thread.name)
-        user_full_name = frappe.get_value("User", thread.owner, "full_name")
         for email in thread.emails:
             t_data = {
                 "icon": "mail",
@@ -26,7 +25,7 @@ def get_linked_gmail_threads(doctype, docname):
                 "doctype": "Gmail Thread",
                 "id": f"gmail-thread-{thread.name}",
                 "template": "timeline_message_box",
-                "owner": thread.owner,
+                "owner": email.sender,
                 "template_data": {
                     "doc": {
                         "name": thread.name,
@@ -58,8 +57,8 @@ def get_linked_gmail_threads(doctype, docname):
                         "_doc_status_indicator": (
                             "green" if email.sent_or_received == "Sent" else "blue"
                         ),
-                        "owner": thread.owner,
-                        "user_full_name": user_full_name,
+                        "owner": email.sender,
+                        "user_full_name": email.sender_full_name,
                     }
                 },
                 "name": thread.name,
