@@ -165,9 +165,11 @@ def process_attachments(new_email, gmail_thread, email_object):
     attachments = []
     for attachment in email_object.attachments:
         try:
-            attachment["mapped_name"] = (
-                str(uuid4()) + attachment["fname"].split(".")[-1]
-            )
+            attachment["mapped_name"] = attachment["fname"]
+            if len(attachment["fname"]) >= 140:
+                attachment["mapped_name"] = (
+                    str(uuid4()) + "." + attachment["fname"].split(".")[-1]
+                )
             _file = frappe.get_doc(
                 {
                     "doctype": "File",
@@ -189,9 +191,9 @@ def process_attachments(new_email, gmail_thread, email_object):
                 }
             )
 
-            if attachment["mapped_name"] in email_object.cid_map:
+            if attachment["fname"] in email_object.cid_map:
                 email_object.cid_map[_file.name] = email_object.cid_map[
-                    attachment["mapped_name"]
+                    attachment["fname"]
                 ]
 
         except MaxFileSizeReachedError:
