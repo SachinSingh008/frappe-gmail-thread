@@ -1,6 +1,7 @@
 import base64
 import json
 import re
+from uuid import uuid4
 
 import frappe
 from bs4 import BeautifulSoup
@@ -164,10 +165,13 @@ def process_attachments(new_email, gmail_thread, email_object):
     attachments = []
     for attachment in email_object.attachments:
         try:
+            attachment["mapped_name"] = (
+                str(uuid4()) + attachment["fname"].split(".")[-1]
+            )
             _file = frappe.get_doc(
                 {
                     "doctype": "File",
-                    "file_name": attachment["fname"],
+                    "file_name": attachment["mapped_name"],
                     "attached_to_doctype": "Gmail Thread",
                     "attached_to_name": gmail_thread.name
                     or gmail_thread.gmail_thread_id,
@@ -185,9 +189,9 @@ def process_attachments(new_email, gmail_thread, email_object):
                 }
             )
 
-            if attachment["fname"] in email_object.cid_map:
+            if attachment["mapped_name"] in email_object.cid_map:
                 email_object.cid_map[_file.name] = email_object.cid_map[
-                    attachment["fname"]
+                    attachment["mapped_name"]
                 ]
 
         except MaxFileSizeReachedError:
