@@ -109,6 +109,16 @@ def create_new_email(email, gmail_account):
             "Single Email CT", {"email_message_id": email_object.message_id}
         )
         if email_ct:
+            gmail_thread = frappe.get_doc("Gmail Thread", email_ct.parent)
+            involved_users_linked = [x.account for x in gmail_thread.involved_users]
+
+            if gmail_account.linked_user not in involved_users_linked:
+                involved_user = frappe.get_doc(
+                    doctype="Involved User", account=gmail_account.linked_user
+                )
+                gmail_thread.append("involved_users", involved_user)
+                gmail_thread.save()
+
             raise AlreadyExistsError
     except frappe.DoesNotExistError:
         pass
