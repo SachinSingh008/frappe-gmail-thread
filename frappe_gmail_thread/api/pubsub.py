@@ -2,6 +2,7 @@ import base64 as b64
 import json
 
 import frappe
+from frappe.utils.background_jobs import is_job_enqueued
 
 
 @frappe.whitelist(allow_guest=True)
@@ -24,9 +25,13 @@ def callback():
             return "OK"
         history_id = message.get("historyId")
         if email_address and history_id:
-            frappe.enqueue(
-                "frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_thread.gmail_thread.sync",
-                user=user.name,
-                history_id=history_id,
-            )
+            job_name = f"gmail_thread_sync_{user.name}"
+            if not is_job_enqueued(job_name):
+                frappe.enqueue(
+                    "frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_thread.gmail_thread.sync",
+                    user=user.name,
+                    history_id=history_id,
+                    queue="long",
+                    job_name=job_name,
+                )
     return "OK"

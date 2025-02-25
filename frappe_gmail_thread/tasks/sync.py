@@ -1,4 +1,5 @@
 import frappe
+from frappe.utils.background_jobs import is_job_enqueued
 
 
 def sync_emails():
@@ -12,9 +13,12 @@ def sync_emails():
         if gaccount.refresh_token:
             user = gaccount.linked_user
             history_id = gaccount.last_historyid
-            frappe.enqueue(
-                "frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_thread.gmail_thread.sync",
-                user=user,
-                history_id=history_id,
-                queue="long",
-            )
+            job_name = f"gmail_thread_sync_{user}"
+            if not is_job_enqueued(job_name):
+                frappe.enqueue(
+                    "frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_thread.gmail_thread.sync",
+                    user=user,
+                    history_id=history_id,
+                    queue="long",
+                    job_name=job_name,
+                )
