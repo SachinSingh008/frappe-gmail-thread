@@ -87,6 +87,9 @@ class GmailThread(Document):
                             )
                         )
                         break
+            elif self.status == "Linked":
+                self.status = "Open"
+                self.save(ignore_permissions=True)
 
 
 @frappe.whitelist(methods=["POST"])
