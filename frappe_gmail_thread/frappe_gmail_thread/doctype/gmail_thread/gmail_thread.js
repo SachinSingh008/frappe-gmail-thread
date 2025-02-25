@@ -41,6 +41,21 @@ frappe.ui.form.on("Gmail Thread", {
       );
     });
     if (frm.doc.reference_doctype && frm.doc.reference_name) {
+      frm.add_custom_button(__("Unlink"), function () {
+        frappe.confirm(__("Are you sure you want to unlink this Gmail Thread?"), function () {
+          frappe.call({
+            method: "frappe_gmail_thread.api.activity.unlink_gmail_thread",
+            args: {
+              name: frm.doc.name,
+            },
+            callback: function (r) {
+              if (r.message) {
+                frm.reload_doc();
+              }
+            },
+          });
+        });
+      });
       frm.add_custom_button(__("Open Linked Document"), function () {
         frappe.set_route("Form", frm.doc.reference_doctype, frm.doc.reference_name);
       });

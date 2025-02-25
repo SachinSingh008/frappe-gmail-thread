@@ -29,5 +29,4 @@ def callback():
                 user=user.name,
                 history_id=history_id,
             )
-        print("PubSub message received: ", message)
     return "OK"

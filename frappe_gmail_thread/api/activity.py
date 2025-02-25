@@ -78,3 +78,12 @@ def relink_gmail_thread(name, doctype, docname):
     thread.reference_name = docname
     thread.save()
     return thread.reference_name
+
+
+@frappe.whitelist()
+def unlink_gmail_thread(name):
+    thread = frappe.get_doc("Gmail Thread", name)
+    thread.reference_doctype = None
+    thread.reference_name = None
+    thread.save()
+    return thread.reference_name

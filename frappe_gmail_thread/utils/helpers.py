@@ -1,6 +1,7 @@
 import base64
 import json
 import re
+from uuid import uuid4
 
 import frappe
 from bs4 import BeautifulSoup
@@ -108,6 +109,18 @@ def create_new_email(email, gmail_account):
             "Single Email CT", {"email_message_id": email_object.message_id}
         )
         if email_ct:
+            gmail_thread = frappe.get_doc("Gmail Thread", email_ct.parent)
+            involved_users_linked = [
+                user.account for user in gmail_thread.involved_users
+            ]
+
+            if gmail_account.linked_user not in involved_users_linked:
+                involved_user = frappe.get_doc(
+                    doctype="Involved User", account=gmail_account.linked_user
+                )
+                gmail_thread.append("involved_users", involved_user)
+                gmail_thread.save()
+
             raise AlreadyExistsError
     except frappe.DoesNotExistError:
         pass
@@ -164,10 +177,15 @@ def process_attachments(new_email, gmail_thread, email_object):
     attachments = []
     for attachment in email_object.attachments:
         try:
+            attachment["mapped_name"] = attachment["fname"]
+            if len(attachment["fname"]) >= 140:
+                attachment["mapped_name"] = (
+                    str(uuid4()) + "." + attachment["fname"].split(".")[-1]
+                )
             _file = frappe.get_doc(
                 {
                     "doctype": "File",
-                    "file_name": attachment["fname"],
+                    "file_name": attachment["mapped_name"],
                     "attached_to_doctype": "Gmail Thread",
                     "attached_to_name": gmail_thread.name
                     or gmail_thread.gmail_thread_id,
