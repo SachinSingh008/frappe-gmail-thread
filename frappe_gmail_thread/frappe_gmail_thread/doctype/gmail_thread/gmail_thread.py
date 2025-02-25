@@ -87,6 +87,9 @@ class GmailThread(Document):
                             )
                         )
                         break
+            elif self.status == "Linked":
+                self.status = "Open"
+                self.save(ignore_permissions=True)
 
 
 @frappe.whitelist(methods=["POST"])
@@ -145,6 +148,7 @@ def sync(user=None, history_id=None):
                 )
                 gmail_thread = find_gmail_thread(thread_id)
                 involved_users = set()
+                email = None
                 for message in thread["messages"]:
                     try:
                         raw_email = (
@@ -186,13 +190,14 @@ def sync(user=None, history_id=None):
                         involved_users.add(recipient)
                     for recipient in email_object.bcc:
                         involved_users.add(recipient)
+                    involved_users.add(gmail_account.linked_user)
                     update_involved_users(gmail_thread, involved_users)
                     process_attachments(email, gmail_thread, email_object)
                     replace_inline_images(email, email_object)
                     gmail_thread.append("emails", email)
                     if int(message["historyId"]) > max_history_id:
                         max_history_id = int(message["historyId"])
-                if gmail_thread:
+                if gmail_thread and email:
                     gmail_thread.save(ignore_permissions=True)
                     frappe.db.set_value(
                         "Gmail Thread",
