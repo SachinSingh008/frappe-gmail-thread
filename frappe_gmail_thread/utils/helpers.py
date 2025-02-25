@@ -110,7 +110,9 @@ def create_new_email(email, gmail_account):
         )
         if email_ct:
             gmail_thread = frappe.get_doc("Gmail Thread", email_ct.parent)
-            involved_users_linked = [x.account for x in gmail_thread.involved_users]
+            involved_users_linked = [
+                user.account for user in gmail_thread.involved_users
+            ]
 
             if gmail_account.linked_user not in involved_users_linked:
                 involved_user = frappe.get_doc(
