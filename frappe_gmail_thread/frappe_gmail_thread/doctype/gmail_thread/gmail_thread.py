@@ -368,8 +368,11 @@ def has_permission(doc, ptype, user):
     if user == "Administrator":
         return True
     if ptype in ("read", "write", "delete", "create"):
-        return frappe.db.exists(
-            "Involved User",
-            {"parent": doc.name, "account": user},
+        return (
+            frappe.db.exists(
+                "Involved User",
+                {"parent": doc.name, "account": user},
+            )
+            is not None
         )
     return False
