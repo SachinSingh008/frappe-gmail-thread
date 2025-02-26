@@ -150,6 +150,8 @@ def sync(user=None, history_id=None):
                 involved_users = set()
                 email = None
                 for message in thread["messages"]:
+                    if int(message["historyId"]) > max_history_id:
+                        max_history_id = int(message["historyId"])
                     try:
                         raw_email = (
                             gmail.users()
@@ -176,7 +178,9 @@ def sync(user=None, history_id=None):
                         gmail_thread = find_gmail_thread(
                             thread_id, [email_message_id] + email_references
                         )
-                    if not gmail_thread:
+                    if gmail_thread:
+                        gmail_thread.reload()
+                    else:
                         gmail_thread = frappe.new_doc("Gmail Thread")
                         gmail_thread.gmail_thread_id = thread_id
                         gmail_thread.gmail_account = gmail_account.name
@@ -195,8 +199,6 @@ def sync(user=None, history_id=None):
                     process_attachments(email, gmail_thread, email_object)
                     replace_inline_images(email, email_object)
                     gmail_thread.append("emails", email)
-                    if int(message["historyId"]) > max_history_id:
-                        max_history_id = int(message["historyId"])
                 if gmail_thread and email:
                     gmail_thread.save(ignore_permissions=True)
                     frappe.db.set_value(
@@ -215,9 +217,10 @@ def sync(user=None, history_id=None):
                         modified_by=gmail_account.linked_user,
                         update_modified=False,
                     )
-            gmail_account.reload()
-            gmail_account.last_historyid = max_history_id
-            gmail_account.save(ignore_permissions=True)
+                gmail_account.reload()
+                gmail_account.last_historyid = max_history_id
+                gmail_account.save(ignore_permissions=True)
+                frappe.db.commit()  # nosemgrep
         else:
             try:
                 history = (
@@ -323,6 +326,7 @@ def sync(user=None, history_id=None):
                 gmail_account.reload()
                 gmail_account.last_historyid = new_history_id
                 gmail_account.save(ignore_permissions=True)
+                frappe.db.commit()  # nosemgrep
                 if updated_docs:
                     for doctype, docname in updated_docs:
                         frappe.publish_realtime(
