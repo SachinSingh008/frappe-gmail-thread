@@ -201,6 +201,7 @@ def sync(user=None, history_id=None):
                     gmail_thread.append("emails", email)
                 if gmail_thread and email:
                     gmail_thread.save(ignore_permissions=True)
+                    frappe.db.commit()  # nosemgrep
                     frappe.db.set_value(
                         "Gmail Thread",
                         gmail_thread.name,
