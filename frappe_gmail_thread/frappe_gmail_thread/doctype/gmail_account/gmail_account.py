@@ -143,4 +143,5 @@ def sync_labels_api(args):
             user=doc.linked_user,
             queue="long",
             job_name=job_name,
+            job_id=job_name,
         )

@@ -21,4 +21,5 @@ def sync_emails():
                     history_id=history_id,
                     queue="long",
                     job_name=job_name,
+                    job_id=job_name,
                 )
