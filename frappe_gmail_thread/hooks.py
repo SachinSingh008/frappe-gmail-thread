@@ -184,13 +184,18 @@ scheduler_events = {
     # 		"frappe_gmail_thread.tasks.all"
     # 	],
     "daily": ["frappe_gmail_thread.tasks.daily.enable_pubsub_everyday"],
-    "hourly": ["frappe_gmail_thread.tasks.sync.sync_emails"],
+    # 	"hourly": [
+    # 		"frappe_gmail_thread.tasks.hourly"
+    # 	],
     # 	"weekly": [
     # 		"frappe_gmail_thread.tasks.weekly"
     # 	],
     # 	"monthly": [
     # 		"frappe_gmail_thread.tasks.monthly"
     # 	],
+    "cron": {
+        "*/30 * * * *": ["frappe_gmail_thread.tasks.sync.sync_emails"],
+    },
 }
 
 # Testing
