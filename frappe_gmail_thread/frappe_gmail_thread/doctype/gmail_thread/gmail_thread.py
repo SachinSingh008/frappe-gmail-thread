@@ -294,15 +294,16 @@ def sync(user=None, history_id=None):
                             gmail_thread.subject_of_first_mail = email.subject
                             gmail_thread.creation = email.date_and_time
                         involved_users.add(email_object.from_email)
-                        process_attachments(email, gmail_thread, email_object)
-                        replace_inline_images(email, email_object)
                         for recipient in email_object.to:
                             involved_users.add(recipient)
                         for recipient in email_object.cc:
                             involved_users.add(recipient)
                         for recipient in email_object.bcc:
                             involved_users.add(recipient)
+                        involved_users.add(gmail_account.linked_user)
                         update_involved_users(gmail_thread, involved_users)
+                        process_attachments(email, gmail_thread, email_object)
+                        replace_inline_images(email, email_object)
                         gmail_thread.append("emails", email)
                         gmail_thread.save(ignore_permissions=True)
                         frappe.db.set_value(
