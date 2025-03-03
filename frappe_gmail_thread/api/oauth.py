@@ -261,7 +261,7 @@ def check_gmail_object(account, gmail):
                     "Your Gmail authorization has expired. Click on {0} in Email Account to re-authorize."
                 ).format(button_label)
             )
-        frappe.throw(_("Something went wrong during the token generation."))
+        raise
     user = frappe.get_doc("User", {"email": email})
     if not user:
         frappe.throw(_("Email address in Gmail Account does not match with any User."))

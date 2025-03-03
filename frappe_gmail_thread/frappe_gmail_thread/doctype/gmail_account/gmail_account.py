@@ -7,6 +7,7 @@ import json
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils.background_jobs import is_job_enqueued
 
 from frappe_gmail_thread.api.oauth import disable_pubsub, enable_pubsub
 from frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_thread.gmail_thread import (
@@ -135,8 +136,12 @@ def sync_labels_api(args):
     doc = frappe.get_doc("Gmail Account", args.get("doc_name"))
     frappe.msgprint(_("Sync started in the background."), alert=True)
     enable_pubsub(doc)
-    frappe.enqueue(
-        "frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_thread.gmail_thread.sync",
-        user=doc.linked_user,
-        queue="long",
-    )
+    job_name = f"gmail_thread_sync_{doc.linked_user}"
+    if not is_job_enqueued(job_name):
+        frappe.enqueue(
+            "frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_thread.gmail_thread.sync",
+            user=doc.linked_user,
+            queue="long",
+            job_name=job_name,
+            job_id=job_name,
+        )

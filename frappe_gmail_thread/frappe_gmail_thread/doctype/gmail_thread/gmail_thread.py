@@ -150,6 +150,8 @@ def sync(user=None, history_id=None):
                 involved_users = set()
                 email = None
                 for message in thread["messages"]:
+                    if int(message["historyId"]) > max_history_id:
+                        max_history_id = int(message["historyId"])
                     try:
                         raw_email = (
                             gmail.users()
@@ -176,7 +178,9 @@ def sync(user=None, history_id=None):
                         gmail_thread = find_gmail_thread(
                             thread_id, [email_message_id] + email_references
                         )
-                    if not gmail_thread:
+                    if gmail_thread:
+                        gmail_thread.reload()
+                    else:
                         gmail_thread = frappe.new_doc("Gmail Thread")
                         gmail_thread.gmail_thread_id = thread_id
                         gmail_thread.gmail_account = gmail_account.name
@@ -195,10 +199,9 @@ def sync(user=None, history_id=None):
                     process_attachments(email, gmail_thread, email_object)
                     replace_inline_images(email, email_object)
                     gmail_thread.append("emails", email)
-                    if int(message["historyId"]) > max_history_id:
-                        max_history_id = int(message["historyId"])
                 if gmail_thread and email:
                     gmail_thread.save(ignore_permissions=True)
+                    frappe.db.commit()  # nosemgrep
                     frappe.db.set_value(
                         "Gmail Thread",
                         gmail_thread.name,
@@ -215,9 +218,10 @@ def sync(user=None, history_id=None):
                         modified_by=gmail_account.linked_user,
                         update_modified=False,
                     )
-            gmail_account.reload()
-            gmail_account.last_historyid = max_history_id
-            gmail_account.save(ignore_permissions=True)
+                gmail_account.reload()
+                gmail_account.last_historyid = max_history_id
+                gmail_account.save(ignore_permissions=True)
+                frappe.db.commit()  # nosemgrep
         else:
             try:
                 history = (
@@ -290,15 +294,16 @@ def sync(user=None, history_id=None):
                             gmail_thread.subject_of_first_mail = email.subject
                             gmail_thread.creation = email.date_and_time
                         involved_users.add(email_object.from_email)
-                        process_attachments(email, gmail_thread, email_object)
-                        replace_inline_images(email, email_object)
                         for recipient in email_object.to:
                             involved_users.add(recipient)
                         for recipient in email_object.cc:
                             involved_users.add(recipient)
                         for recipient in email_object.bcc:
                             involved_users.add(recipient)
+                        involved_users.add(gmail_account.linked_user)
                         update_involved_users(gmail_thread, involved_users)
+                        process_attachments(email, gmail_thread, email_object)
+                        replace_inline_images(email, email_object)
                         gmail_thread.append("emails", email)
                         gmail_thread.save(ignore_permissions=True)
                         frappe.db.set_value(
@@ -323,6 +328,7 @@ def sync(user=None, history_id=None):
                 gmail_account.reload()
                 gmail_account.last_historyid = new_history_id
                 gmail_account.save(ignore_permissions=True)
+                frappe.db.commit()  # nosemgrep
                 if updated_docs:
                     for doctype, docname in updated_docs:
                         frappe.publish_realtime(
@@ -363,8 +369,11 @@ def has_permission(doc, ptype, user):
     if user == "Administrator":
         return True
     if ptype in ("read", "write", "delete", "create"):
-        return frappe.db.exists(
-            "Involved User",
-            {"parent": doc.name, "account": user},
+        return (
+            frappe.db.exists(
+                "Involved User",
+                {"parent": doc.name, "account": user},
+            )
+            is not None
         )
     return False
