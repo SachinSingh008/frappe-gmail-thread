@@ -44,6 +44,25 @@ frappe.ui.form.on("Gmail Account", {
       frm.add_custom_button(__("Fetch Labels"), function () {
         frm.events.fetch_labels(frm);
       });
+      frm.add_custom_button(__("Resync Emails"), function () {
+        frappe.confirm(__("Are you sure you want to resync all emails?"), function () {
+          frappe.call({
+            method: "frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_account.gmail_account.sync_labels_api",
+            type: "POST",
+            args: {
+              args: {
+                doc_name: frm.doc.name,
+                reset_historyid: true,
+              },
+            },
+            callback: function (r) {},
+            error: function (r) {
+              frappe.msgprint(__("Something went wrong. Please try again later, or report issue in GitHub issues."));
+              frm.reload_doc();
+            },
+          });
+        });
+      });
     }
     frm.fields_dict.labels.$wrapper.find(".grid-row-check").hide();
   },

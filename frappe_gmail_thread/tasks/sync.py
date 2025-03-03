@@ -12,13 +12,11 @@ def sync_emails():
         gaccount = frappe.get_doc("Gmail Account", gmail_account.name)
         if gaccount.refresh_token:
             user = gaccount.linked_user
-            history_id = gaccount.last_historyid
             job_name = f"gmail_thread_sync_{user}"
             if not is_job_enqueued(job_name):
                 frappe.enqueue(
                     "frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_thread.gmail_thread.sync",
                     user=user,
-                    history_id=history_id,
                     queue="long",
                     job_name=job_name,
                     job_id=job_name,
