@@ -111,7 +111,7 @@ def sync_labels(account_name):
     gmail_account.save(ignore_permissions=True)
 
 
-def sync(user=None, history_id=None):
+def sync(user=None):
     if user:
         frappe.set_user(user)
     user = frappe.session.user
@@ -152,15 +152,12 @@ def sync(user=None, history_id=None):
                 for message in thread["messages"]:
                     if int(message["historyId"]) > max_history_id:
                         max_history_id = int(message["historyId"])
-                    try:
-                        raw_email = (
-                            gmail.users()
-                            .messages()
-                            .get(userId="me", id=message["id"], format="raw")
-                            .execute()
-                        )
-                    except googleapiclient.errors.HttpError:
-                        continue
+                    raw_email = (
+                        gmail.users()
+                        .messages()
+                        .get(userId="me", id=message["id"], format="raw")
+                        .execute()
+                    )
                     try:
                         email, email_object = create_new_email(raw_email, gmail_account)
                     except AlreadyExistsError:
@@ -199,7 +196,6 @@ def sync(user=None, history_id=None):
                     process_attachments(email, gmail_thread, email_object)
                     replace_inline_images(email, email_object)
                     gmail_thread.append("emails", email)
-                if gmail_thread and email:
                     gmail_thread.save(ignore_permissions=True)
                     frappe.db.commit()  # nosemgrep
                     frappe.db.set_value(
@@ -218,52 +214,35 @@ def sync(user=None, history_id=None):
                         modified_by=gmail_account.linked_user,
                         update_modified=False,
                     )
-                gmail_account.reload()
-                gmail_account.last_historyid = max_history_id
-                gmail_account.save(ignore_permissions=True)
-                frappe.db.commit()  # nosemgrep
+            gmail_account.reload()
+            gmail_account.last_historyid = max_history_id
+            gmail_account.save(ignore_permissions=True)
+            frappe.db.commit()  # nosemgrep
         else:
-            try:
-                history = (
-                    gmail.users()
-                    .history()
-                    .list(
-                        userId="me",
-                        startHistoryId=history_id,
-                        historyTypes=["messageAdded", "labelAdded"],
-                        labelId=label_id,
-                    )
-                    .execute()
+            history = (
+                gmail.users()
+                .history()
+                .list(
+                    userId="me",
+                    startHistoryId=last_history_id,
+                    historyTypes=["messageAdded", "labelAdded"],
+                    labelId=label_id,
                 )
-            except googleapiclient.errors.HttpError:
-                continue
+                .execute()
+            )
             new_history_id = int(history["historyId"])
             if new_history_id > last_history_id:
-                history = (
-                    gmail.users()
-                    .history()
-                    .list(
-                        userId="me",
-                        startHistoryId=last_history_id,
-                        historyTypes=["messageAdded", "labelAdded"],
-                        labelId=label_id,
-                    )
-                    .execute()
-                )
                 if "history" not in history:
-                    return
+                    continue
                 updated_docs = set()
                 for history in history["history"]:
                     for message in history["messages"]:
-                        try:
-                            raw_email = (
-                                gmail.users()
-                                .messages()
-                                .get(userId="me", id=message["id"], format="raw")
-                                .execute()
-                            )
-                        except googleapiclient.errors.HttpError:
-                            continue
+                        raw_email = (
+                            gmail.users()
+                            .messages()
+                            .get(userId="me", id=message["id"], format="raw")
+                            .execute()
+                        )
                         thread_id = message["threadId"]
                         gmail_thread = find_gmail_thread(thread_id)
                         involved_users = set()
