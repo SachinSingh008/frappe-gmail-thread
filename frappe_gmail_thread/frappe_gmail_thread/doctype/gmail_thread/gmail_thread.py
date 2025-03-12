@@ -101,7 +101,7 @@ def sync_labels(account_name):
     available_labels = [x.label_id for x in gmail_account.labels]
 
     for label in labels["labels"]:
-        if label["name"] == "DRAFT":
+        if label["name"] in ["DRAFT", "CHAT"]:
             continue
         if label["id"] in available_labels:
             continue
@@ -152,12 +152,23 @@ def sync(user=None):
                 for message in thread["messages"]:
                     if int(message["historyId"]) > max_history_id:
                         max_history_id = int(message["historyId"])
-                    raw_email = (
-                        gmail.users()
-                        .messages()
-                        .get(userId="me", id=message["id"], format="raw")
-                        .execute()
-                    )
+                    try:
+                        raw_email = (
+                            gmail.users()
+                            .messages()
+                            .get(userId="me", id=message["id"], format="raw")
+                            .execute()
+                        )
+                    except googleapiclient.errors.HttpError as e:
+                        if e.error_details:
+                            for error in e.error_details:
+                                if error.get("reason") == "notFound":
+                                    break
+                        else:
+                            raise e
+                        continue
+                    if "DRAFT" in raw_email.get("labelIds", []):
+                        continue
                     try:
                         email, email_object = create_new_email(raw_email, gmail_account)
                     except AlreadyExistsError:
@@ -237,12 +248,23 @@ def sync(user=None):
                 updated_docs = set()
                 for history in history["history"]:
                     for message in history["messages"]:
-                        raw_email = (
-                            gmail.users()
-                            .messages()
-                            .get(userId="me", id=message["id"], format="raw")
-                            .execute()
-                        )
+                        try:
+                            raw_email = (
+                                gmail.users()
+                                .messages()
+                                .get(userId="me", id=message["id"], format="raw")
+                                .execute()
+                            )
+                        except googleapiclient.errors.HttpError as e:
+                            if e.error_details:
+                                for error in e.error_details:
+                                    if error.get("reason") == "notFound":
+                                        break
+                            else:
+                                raise e
+                            continue
+                        if "DRAFT" in raw_email.get("labelIds", []):
+                            continue
                         thread_id = message["threadId"]
                         gmail_thread = find_gmail_thread(thread_id)
                         involved_users = set()
