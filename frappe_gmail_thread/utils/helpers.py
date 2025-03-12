@@ -119,7 +119,7 @@ def create_new_email(email, gmail_account):
                     doctype="Involved User", account=gmail_account.linked_user
                 )
                 gmail_thread.append("involved_users", involved_user)
-                gmail_thread.save()
+                gmail_thread.save(ignore_permissions=True)
 
             raise AlreadyExistsError
     except frappe.DoesNotExistError:
