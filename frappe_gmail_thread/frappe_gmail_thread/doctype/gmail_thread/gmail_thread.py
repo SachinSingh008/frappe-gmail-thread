@@ -42,7 +42,7 @@ class GmailThread(Document):
             return True
         return super().has_value_changed(fieldname)
 
-    def on_update(self):
+    def before_save(self):
         if self.has_value_changed("involved_users"):
             # give permission of all files to all involved users
             attachments = frappe.get_all(
@@ -69,7 +69,6 @@ class GmailThread(Document):
             if self.reference_doctype and self.reference_name:
                 if self.status == "Open":
                     self.status = "Linked"
-                    self.save(ignore_permissions=True)
                 # check if there is any other thread with same reference doctype and name
                 threads = frappe.get_all(
                     "Gmail Thread",
@@ -89,7 +88,6 @@ class GmailThread(Document):
                         break
             elif self.status == "Linked":
                 self.status = "Open"
-                self.save(ignore_permissions=True)
 
 
 @frappe.whitelist(methods=["POST"])
@@ -169,6 +167,7 @@ def sync(user=None):
                         continue
                     if "DRAFT" in raw_email.get("labelIds", []):
                         continue
+                    is_new_thread = False
                     try:
                         email, email_object = create_new_email(raw_email, gmail_account)
                     except AlreadyExistsError:
@@ -192,6 +191,7 @@ def sync(user=None):
                         gmail_thread = frappe.new_doc("Gmail Thread")
                         gmail_thread.gmail_thread_id = thread_id
                         gmail_thread.gmail_account = gmail_account.name
+                        is_new_thread = True
                     if not gmail_thread.subject_of_first_mail:
                         gmail_thread.subject_of_first_mail = email.subject
                         gmail_thread.creation = email.date_and_time
@@ -216,6 +216,14 @@ def sync(user=None):
                         email.date_and_time,
                         update_modified=False,
                     )
+                    if is_new_thread:  # update creation date
+                        frappe.db.set_value(
+                            "Gmail Thread",
+                            gmail_thread.name,
+                            "creation",
+                            email.date_and_time,
+                            update_modified=False,
+                        )
                     # set owner to linked user
                     frappe.db.set_value(
                         "Gmail Thread",
@@ -268,6 +276,7 @@ def sync(user=None):
                         thread_id = message["threadId"]
                         gmail_thread = find_gmail_thread(thread_id)
                         involved_users = set()
+                        is_new_thread = False
                         try:
                             email, email_object = create_new_email(
                                 raw_email, gmail_account
@@ -291,6 +300,7 @@ def sync(user=None):
                             gmail_thread = frappe.new_doc("Gmail Thread")
                             gmail_thread.gmail_thread_id = thread_id
                             gmail_thread.gmail_account = gmail_account.name
+                            is_new_thread = True
                         if not gmail_thread.subject_of_first_mail:
                             gmail_thread.subject_of_first_mail = email.subject
                             gmail_thread.creation = email.date_and_time
@@ -314,6 +324,14 @@ def sync(user=None):
                             email.date_and_time,
                             update_modified=False,
                         )
+                        if is_new_thread:  # update creation date
+                            frappe.db.set_value(
+                                "Gmail Thread",
+                                gmail_thread.name,
+                                "creation",
+                                email.date_and_time,
+                                update_modified=False,
+                            )
                         # if gmail thread has a reference doctype and name, then publish real-time activity
                         if (
                             gmail_thread.reference_doctype
