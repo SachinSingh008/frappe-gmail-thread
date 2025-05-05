@@ -42,7 +42,7 @@ class GmailThread(Document):
             return True
         return super().has_value_changed(fieldname)
 
-    def before_save(self):
+    def on_update(self):
         if self.has_value_changed("involved_users"):
             # give permission of all files to all involved users
             attachments = frappe.get_all(
@@ -69,6 +69,7 @@ class GmailThread(Document):
             if self.reference_doctype and self.reference_name:
                 if self.status == "Open":
                     self.status = "Linked"
+                    self.save(ignore_permissions=True)
                 # check if there is any other thread with same reference doctype and name
                 threads = frappe.get_all(
                     "Gmail Thread",
@@ -88,6 +89,7 @@ class GmailThread(Document):
                         break
             elif self.status == "Linked":
                 self.status = "Open"
+                self.save(ignore_permissions=True)
 
 
 @frappe.whitelist(methods=["POST"])
