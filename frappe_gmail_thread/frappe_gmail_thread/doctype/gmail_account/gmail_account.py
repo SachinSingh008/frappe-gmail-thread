@@ -64,7 +64,9 @@ class GmailAccount(Document):
             return True
         return super().has_value_changed(fieldname)
 
-    def before_save(self):
+    def on_update(self):
+        if self.linked_user != frappe.session.user:
+            return
         if self.has_value_changed("gmail_enabled") and self.gmail_enabled:
             google_settings = frappe.get_single("Google Settings")
             if not google_settings.enable:
@@ -98,6 +100,7 @@ class GmailAccount(Document):
                     )
         if self.has_value_changed("labels"):
             self.last_historyid = 0  # reset history id if labels are changed
+            self.save()
 
             if self.gmail_enabled and self.refresh_token:
                 has_labels = False
