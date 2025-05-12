@@ -78,7 +78,7 @@ class GmailAccount(Document):
                     )
                 )
         if self.has_value_changed("refresh_token") and self.refresh_token:
-            sync_labels(self.name)
+            sync_labels(self, should_save=False)
             google_settings = frappe.get_single("Google Settings")
             if (
                 google_settings.custom_gmail_sync_in_realtime

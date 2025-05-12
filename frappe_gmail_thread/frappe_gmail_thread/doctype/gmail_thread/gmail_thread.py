@@ -91,11 +91,15 @@ class GmailThread(Document):
 
 
 @frappe.whitelist(methods=["POST"])
-def sync_labels(account_name):
-    gmail = get_gmail_object(account_name)
+def sync_labels(account_name, should_save=True):
+    if isinstance(account_name, str):
+        gmail_account = frappe.get_doc("Gmail Account", account_name)
+    else:
+        gmail_account = account_name
+
+    gmail = get_gmail_object(gmail_account)
     labels = gmail.users().labels().list(userId="me").execute()
 
-    gmail_account = frappe.get_doc("Gmail Account", account_name)
     available_labels = [x.label_id for x in gmail_account.labels]
 
     for label in labels["labels"]:
@@ -106,7 +110,8 @@ def sync_labels(account_name):
         gmail_account.append(
             "labels", {"label_id": label["id"], "label_name": label["name"]}
         )
-    gmail_account.save(ignore_permissions=True)
+    if should_save:
+        gmail_account.save(ignore_permissions=True)
 
 
 def sync(user=None):
@@ -120,7 +125,7 @@ def sync(user=None):
         frappe.throw(
             _("Please authorize Gmail by clicking on 'Authorize Gmail' button.")
         )
-    gmail = get_gmail_object(gmail_account.name)
+    gmail = get_gmail_object(gmail_account)
     label_ids = [x.label_id for x in gmail_account.labels if x.enabled]
     if not label_ids:
         return
