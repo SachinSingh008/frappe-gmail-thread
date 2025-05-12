@@ -153,7 +153,7 @@ def enable_pubsub(gmail_account):
         )
     if not google_settings.custom_gmail_pubsub_topic:
         frappe.throw(_("Please configure PubSub in Google Settings."))
-    gmail = get_gmail_object(gmail_account.name)
+    gmail = get_gmail_object(gmail_account)
     topic = google_settings.custom_gmail_pubsub_topic
     label_ids = [x.label_id for x in gmail_account.labels if x.enabled]
     if not label_ids:
@@ -178,13 +178,14 @@ def disable_pubsub(gmail_account):
         )
     if not google_settings.custom_gmail_pubsub_topic:
         frappe.throw(_("Please configure PubSub in Email Account."))
-    gmail = get_gmail_object(gmail_account.name)
+    gmail = get_gmail_object(gmail_account)
     gmail.users().stop(userId="me").execute()
 
 
-def get_access_token(gmail_account_name):
+def get_access_token(gmail_account):
     google_settings = frappe.get_single("Google Settings")
-    gmail_account = frappe.get_doc("Gmail Account", gmail_account_name)
+    if isinstance(gmail_account, str):
+        gmail_account = frappe.get_doc("Gmail Account", gmail_account)
 
     if not gmail_account.refresh_token:
         button_label = frappe.bold(_("Authorize Gmail"))
@@ -219,15 +220,18 @@ def get_access_token(gmail_account_name):
     return r.get("access_token")
 
 
-def get_gmail_object(gmail_account_name):
+def get_gmail_object(gmail_account):
     """
     Returns an object of Google Mail along with Google Mail doc.
     """
     google_settings = frappe.get_doc("Google Settings")
-    account = frappe.get_doc("Gmail Account", gmail_account_name)
+    if isinstance(gmail_account, str):
+        account = frappe.get_doc("Gmail Account", gmail_account)
+    else:
+        account = gmail_account
 
     credentials_dict = {
-        "token": get_access_token(gmail_account_name),
+        "token": get_access_token(account),
         "refresh_token": account.get_password(
             fieldname="refresh_token", raise_exception=False
         ),
