@@ -42,7 +42,7 @@ class GmailThread(Document):
             return True
         return super().has_value_changed(fieldname)
 
-    def on_update(self):
+    def before_save(self):
         if self.has_value_changed("involved_users"):
             # give permission of all files to all involved users
             attachments = frappe.get_all(
@@ -69,7 +69,6 @@ class GmailThread(Document):
             if self.reference_doctype and self.reference_name:
                 if self.status == "Open":
                     self.status = "Linked"
-                    self.save(ignore_permissions=True)
                 # check if there is any other thread with same reference doctype and name
                 threads = frappe.get_all(
                     "Gmail Thread",
@@ -89,15 +88,18 @@ class GmailThread(Document):
                         break
             elif self.status == "Linked":
                 self.status = "Open"
-                self.save(ignore_permissions=True)
 
 
 @frappe.whitelist(methods=["POST"])
-def sync_labels(account_name):
-    gmail = get_gmail_object(account_name)
+def sync_labels(account_name, should_save=True):
+    if isinstance(account_name, str):
+        gmail_account = frappe.get_doc("Gmail Account", account_name)
+    else:
+        gmail_account = account_name
+
+    gmail = get_gmail_object(gmail_account)
     labels = gmail.users().labels().list(userId="me").execute()
 
-    gmail_account = frappe.get_doc("Gmail Account", account_name)
     available_labels = [x.label_id for x in gmail_account.labels]
 
     for label in labels["labels"]:
@@ -108,7 +110,8 @@ def sync_labels(account_name):
         gmail_account.append(
             "labels", {"label_id": label["id"], "label_name": label["name"]}
         )
-    gmail_account.save(ignore_permissions=True)
+    if should_save:
+        gmail_account.save(ignore_permissions=True)
 
 
 def sync(user=None):
@@ -122,7 +125,7 @@ def sync(user=None):
         frappe.throw(
             _("Please authorize Gmail by clicking on 'Authorize Gmail' button.")
         )
-    gmail = get_gmail_object(gmail_account.name)
+    gmail = get_gmail_object(gmail_account)
     label_ids = [x.label_id for x in gmail_account.labels if x.enabled]
     if not label_ids:
         return
