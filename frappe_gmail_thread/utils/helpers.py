@@ -88,8 +88,9 @@ class AlreadyExistsError(Exception):
 
 
 def create_new_email(email, gmail_account):
+    # decode raw email with errors='replace' to avoid UnicodeDecodeError
     email_content = base64.urlsafe_b64decode(email["raw"].encode("ASCII")).decode(
-        "utf-8"
+        "utf-8", errors="replace"
     )
     email_object = GmailInboundMail(content=email_content)
     # check if email is sent or received
@@ -125,25 +126,31 @@ def create_new_email(email, gmail_account):
     except frappe.DoesNotExistError:
         pass
 
+    def safe_str(val):
+        # Ensure string is safe for DB, replace surrogates and invalid chars
+        if isinstance(val, str):
+            return val.encode("utf-8", "surrogateescape").decode("utf-8", "replace")
+        return val
+
     new_email = frappe.new_doc("Single Email CT")
-    new_email.gmail_message_id = email["id"]
-    new_email.subject = email_object.subject
-    new_email.sender = email_object.from_email
-    new_email.recipients = ", ".join(email_object.to).strip()
-    new_email.cc = ", ".join(email_object.cc).strip()
-    new_email.bcc = ", ".join(email_object.bcc).strip()
-    new_email.content = email_object.content
-    new_email.plain_content = email_object.text_content.strip() or html_to_text(
-        email_object.html_content
+    new_email.gmail_message_id = safe_str(email["id"])
+    new_email.subject = safe_str(email_object.subject)
+    new_email.sender = safe_str(email_object.from_email)
+    new_email.recipients = safe_str(", ".join(email_object.to).strip())
+    new_email.cc = safe_str(", ".join(email_object.cc).strip())
+    new_email.bcc = safe_str(", ".join(email_object.bcc).strip())
+    new_email.content = safe_str(email_object.content)
+    new_email.plain_content = safe_str(
+        email_object.text_content.strip() or html_to_text(email_object.html_content)
     )
     new_email.date_and_time = email_object.date
-    new_email.sender_full_name = email_object.from_real_name
+    new_email.sender_full_name = safe_str(email_object.from_real_name)
     new_email.read_receipt = False
     new_email.read_by_recipient = False
     new_email.read_by_recipient_on = None
     new_email.gmail_account = gmail_account.name
     new_email.email_status = "Open"
-    new_email.email_message_id = email_object.message_id
+    new_email.email_message_id = safe_str(email_object.message_id)
     new_email.linked_communication = None
     new_email.sent_or_received = "Sent" if is_sent else "Received"
     # save attachments to private files
