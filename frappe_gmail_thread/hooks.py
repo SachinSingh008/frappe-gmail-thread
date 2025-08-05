@@ -2,7 +2,7 @@ app_name = "frappe_gmail_thread"
 app_title = "Frappe Gmail Thread"
 app_publisher = "rtCamp"
 app_description = "This app is used to display emails as threads, just like Gmail does."
-app_email = "sys@rtcamp.com"
+app_email = "frappe@rtcamp.com"
 app_license = "agpl-3.0"
 
 # Apps
