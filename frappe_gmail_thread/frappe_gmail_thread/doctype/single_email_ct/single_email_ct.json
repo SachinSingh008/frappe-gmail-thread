@@ -108,7 +108,7 @@
   },
   {
    "fieldname": "sender",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "label": "From",
    "read_only": 1
   },
@@ -195,7 +195,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-12-13 12:15:53.005599",
+ "modified": "2025-02-24 18:53:56.797831",
  "modified_by": "Administrator",
  "module": "Frappe Gmail Thread",
  "name": "Single Email CT",

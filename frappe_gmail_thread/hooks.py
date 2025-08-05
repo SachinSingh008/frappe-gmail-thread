@@ -194,7 +194,7 @@ scheduler_events = {
     # 		"frappe_gmail_thread.tasks.monthly"
     # 	],
     "cron": {
-        "*/10 * * * *": ["frappe_gmail_thread.tasks.sync.sync_emails"],
+        "*/30 * * * *": ["frappe_gmail_thread.tasks.sync.sync_emails"],
     },
 }
 
