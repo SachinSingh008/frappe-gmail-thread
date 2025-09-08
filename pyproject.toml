@@ -1,7 +1,7 @@
 [project]
 name = "frappe_gmail_thread"
 authors = [
-    { name = "rtCamp", email = "sys@rtcamp.com"}
+    { name = "rtCamp", email = "frappe@rtcamp.com"}
 ]
 description = "This app is used to display emails as threads, just like Gmail does."
 requires-python = ">=3.10"
