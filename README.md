@@ -1,21 +1,47 @@
-## Frappe Gmail Thread
+# Frappe Gmail Thread
 
-This app introduces Gmail thread tracking within Frappe by leveraging Gmail's Thread ID, enabling a more organized and seamless communication experience. Similar to Gmail's native threaded view, this feature groups related emails into cohesive conversations. Thread IDs are stored within Gmail Thread doctype designed specifically for threaded conversations. 
+A Frappe app that integrates with Gmail's Thread ID to seamlessly sync and track email conversations within your Frappe/ERPNext instance. This provides a unified view of your communications, allowing you to link email threads directly to ERPNext documents like Leads, Sales Orders, and Tasks.
 
-Additionally, Gmail thread can be associated with any doctype, such as Lead, Sales Orders or Tasks, to efficiently track email activity within specific documents.
+### [View the GitHub Wiki for Full Documentation](https://github.com/rtCamp/frappe-gmail-thread/wiki "null")
 
-#### Key Features and Capabilities
-##### Send/Receive Emails:
-Emails sent or received will automatically sync into ERPNext.
-##### Link Threads to ERPNext Documents:
-Associate Gmail threads with any doctype (e.g., Sales Order, Task) to track email activity directly within the document.
-##### CC/BCC Functionality:
-Emails with CC/BCC recipients allow all involved users to view and interact with the thread.
-##### Attachments:
-Email attachments are linked to the Gmail thread and are visible in the associated document's activity if the thread is linked.
-##### Involving Additional Users:
-Add users manually to the Involved User field within the Gmail Thread. These users can interact with the thread even if they weren’t originally part of the email thread.
+## Key Features
 
-#### License
+- **Seamless Email Syncing:** Automatically syncs sent and received emails into your Frappe instance.
 
-agpl-3.0
+- **Threaded Conversations:** Organizes emails into cohesive threads based on Gmail's native Thread ID.
+
+- **Document Linking:** Link email threads to any ERPNext doctype to view communication history in the document's activity feed.
+
+- **Multi-User Visibility:** Emails with CC/BCC recipients automatically grant all involved users access to the thread.
+
+- **Attachment Management:** Attachments are linked to the thread and visible within the associated document.
+
+- **Manual User Access:** Manually add users to a thread to grant them access to the conversation.
+
+- **Selective Syncing:** Use Gmail labels to control which emails are synced to Frappe, giving you granular control over what data is stored.
+
+## Installation
+
+Run the following command to install the app.
+
+```bash
+bench get-app git@github.com:rtCamp/frappe-gmail-thread.git
+bench --site [site-name] install-app frappe_gmail_thread
+bench --site [site-name] migrate
+bench restart
+```
+
+For local development, check out our dev-tool for seamlessly building Frappe apps: [frappe-manager](https://github.com/rtCamp/Frappe-Manager)  
+NOTE: If using `frappe-manager`, you might require to `fm restart` to provision the worker queues.
+
+## License
+
+This project is licensed under the [AGPLv3 License](license.txt).
+
+## Technical Details
+
+The app uses email message IDs and reference headers to group emails into a single `Gmail Thread` doctype, unifying threads across different user mailboxes within Frappe.
+
+## Contributing
+
+We welcome contributions! If you encounter any bugs or have suggestions, please open an issue or submit a pull request on our GitHub repository. Make sure to read [contribution.md](./CONTRIBUTING.md) for details.
