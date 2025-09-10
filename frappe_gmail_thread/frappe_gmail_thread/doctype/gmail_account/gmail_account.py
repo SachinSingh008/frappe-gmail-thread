@@ -99,6 +99,15 @@ class GmailAccount(Document):
         if self.has_value_changed("labels"):
             self.last_historyid = 0  # reset history id if labels are changed
 
+            # Remove or disable invalid labels (CHAT, DRAFT)
+            filtered = []
+            for d in self.labels:
+                if d.label_name in ("CHAT", "DRAFT"):
+                    continue
+                filtered.append(d)
+            if len(filtered) != len(self.labels):
+                self.set("labels", filtered)
+
             if self.gmail_enabled and self.refresh_token:
                 has_labels = False
                 for label in self.labels:

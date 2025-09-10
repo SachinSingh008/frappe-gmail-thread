@@ -65,6 +65,18 @@ frappe.ui.form.on("Gmail Account", {
       });
     }
     frm.fields_dict.labels.$wrapper.find(".grid-row-check").hide();
+
+    // Hide CHAT and DRAFT labels from the grid rows if present
+    if (frm.doc.labels && frm.doc.labels.length) {
+      // filter out in memory to avoid enabling them accidentally
+      let filtered = (frm.doc.labels || []).filter(function (d) {
+        return ["CHAT", "DRAFT"].indexOf(d.label_name) === -1;
+      });
+      if (filtered.length !== frm.doc.labels.length) {
+        frm.doc.labels = filtered;
+        frm.refresh_field("labels");
+      }
+    }
   },
   onload(frm) {
     frm.get_field("labels").grid.cannot_add_rows = true;

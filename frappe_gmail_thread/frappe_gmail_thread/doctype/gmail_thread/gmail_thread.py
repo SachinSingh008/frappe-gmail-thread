@@ -17,6 +17,12 @@ from frappe_gmail_thread.utils.helpers import (
     process_attachments,
     replace_inline_images,
 )
+from googleapiclient.http import BatchHttpRequest
+from datetime import datetime, timedelta, timezone
+from typing import List, Dict, Any
+import time
+
+logger = frappe.logger("gmail_sync")
 
 SCOPES = "https://www.googleapis.com/auth/gmail.readonly"
 
@@ -114,6 +120,208 @@ def sync_labels(account_name, should_save=True):
         gmail_account.save(ignore_permissions=True)
 
 
+def _get_google_settings():
+    try:
+        return frappe.get_single("Google Settings")
+    except Exception:
+        return None
+
+
+def _get_retry_after_key(gmail_account_name: str) -> str:
+    return f"gmail_retry_after_until:{gmail_account_name}"
+
+
+def _get_wait_seconds_if_rate_limited(gmail_account_name: str) -> int:
+    cache = frappe.cache()
+    retry_until = cache.get_value(_get_retry_after_key(gmail_account_name))
+    if not retry_until:
+        return 0
+    try:
+        retry_until_dt = datetime.fromisoformat(retry_until)
+    except Exception:
+        return 0
+    now = datetime.now(timezone.utc)
+    if retry_until_dt > now:
+        return int((retry_until_dt - now).total_seconds())
+    return 0
+
+
+def _set_rate_limit_until(gmail_account_name: str, seconds: int) -> None:
+    until = datetime.now(timezone.utc) + timedelta(seconds=max(1, int(seconds)))
+    frappe.cache().set_value(_get_retry_after_key(gmail_account_name), until.isoformat())
+
+
+def _chunk_list(items: List[Any], chunk_size: int) -> List[List[Any]]:
+    if chunk_size <= 0:
+        return [items]
+    return [items[i : i + chunk_size] for i in range(0, len(items), chunk_size)]
+
+
+def _batch_fetch_threads(gmail, thread_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+    threads_data: Dict[str, Dict[str, Any]] = {}
+    errors: Dict[str, Exception] = {}
+
+    def thread_callback(request_id, response, exception):
+        if exception is not None:
+            errors[request_id] = exception
+            return
+        threads_data[request_id] = response
+
+    batch = BatchHttpRequest(callback=thread_callback)
+    for tid in thread_ids:
+        req = gmail.users().threads().get(userId="me", id=tid)
+        batch.add(req, request_id=tid)
+    try:
+        batch.execute()
+    except googleapiclient.errors.HttpError as e:
+        # Handle top-level batch failures (e.g. 429)
+        raise e
+    # Best-effort: ignore per-item notFound errors
+    return threads_data
+
+
+def _batch_fetch_raw_messages(gmail, message_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+    messages_data: Dict[str, Dict[str, Any]] = {}
+    errors: Dict[str, Exception] = {}
+
+    def msg_callback(request_id, response, exception):
+        if exception is not None:
+            errors[request_id] = exception
+            return
+        messages_data[request_id] = response
+
+    batch = BatchHttpRequest(callback=msg_callback)
+    for mid in message_ids:
+        req = gmail.users().messages().get(userId="me", id=mid, format="raw")
+        batch.add(req, request_id=mid)
+    batch.execute()
+    return messages_data
+
+
+def _process_threads_batch(gmail_account, gmail, thread_ids: List[str]):
+    # Check if we should delay due to rate limit
+    wait_s = _get_wait_seconds_if_rate_limited(gmail_account.name)
+    if wait_s > 0:
+        # Skip processing now; cron will pick it up later
+        return
+
+    try:
+        threads_map = _batch_fetch_threads(gmail, thread_ids)
+    except googleapiclient.errors.HttpError as e:
+        status = getattr(getattr(e, "resp", None), "status", None)
+        if status == 429:
+            retry_after = getattr(e, "resp", {}).get("retry-after") if hasattr(e, "resp") else None
+            retry_after_seconds = int(retry_after) if retry_after and str(retry_after).isdigit() else 60
+            _set_rate_limit_until(gmail_account.name, retry_after_seconds)
+            return
+        raise
+
+    # Collect all message ids from all threads in this batch
+    message_ids: List[str] = []
+    thread_id_to_message_ids: Dict[str, List[str]] = {}
+    for tid, thread_data in threads_map.items():
+        mids = [m.get("id") for m in thread_data.get("messages", []) if m.get("id")]
+        if mids:
+            thread_id_to_message_ids[tid] = mids
+            message_ids.extend(mids)
+
+    # Fetch all messages in batch (may be large; split into sub-batches of 50)
+    for mids_chunk in _chunk_list(message_ids, 50):
+        try:
+            messages_map = _batch_fetch_raw_messages(gmail, mids_chunk)
+        except googleapiclient.errors.HttpError as e:
+            status = getattr(getattr(e, "resp", None), "status", None)
+            if status == 429:
+                retry_after = getattr(e, "resp", {}).get("retry-after") if hasattr(e, "resp") else None
+                retry_after_seconds = int(retry_after) if retry_after and str(retry_after).isdigit() else 60
+                _set_rate_limit_until(gmail_account.name, retry_after_seconds)
+                return
+            raise
+
+        # Process messages, building/augmenting threads
+        processed_threads: Dict[str, Dict[str, Any]] = {}
+        for tid, mids in thread_id_to_message_ids.items():
+            for mid in mids:
+                raw_email = messages_map.get(mid)
+                if not raw_email:
+                    continue
+                if "DRAFT" in raw_email.get("labelIds", []):
+                    continue
+                gmail_thread = find_gmail_thread(tid)
+                involved_users = set()
+                is_new_thread = False
+                try:
+                    email, email_object = create_new_email(raw_email, gmail_account)
+                except AlreadyExistsError:
+                    continue
+                if not gmail_thread:
+                    email_message_id = email_object.message_id
+                    email_references = email_object.mail.get("References")
+                    if email_references:
+                        email_references = [
+                            get_string_between("<", x, ">") for x in email_references.split()
+                        ]
+                    else:
+                        email_references = []
+                    gmail_thread = find_gmail_thread(tid, [email_message_id] + email_references)
+                if gmail_thread:
+                    gmail_thread.reload()
+                else:
+                    gmail_thread = frappe.new_doc("Gmail Thread")
+                    gmail_thread.gmail_thread_id = tid
+                    gmail_thread.gmail_account = gmail_account.name
+                    is_new_thread = True
+                if not gmail_thread.subject_of_first_mail:
+                    gmail_thread.subject_of_first_mail = email.subject
+                    gmail_thread.creation = email.date_and_time
+                involved_users.add(email_object.from_email)
+                for recipient in email_object.to:
+                    involved_users.add(recipient)
+                for recipient in email_object.cc:
+                    involved_users.add(recipient)
+                for recipient in email_object.bcc:
+                    involved_users.add(recipient)
+                involved_users.add(gmail_account.linked_user)
+                update_involved_users(gmail_thread, involved_users)
+                process_attachments(email, gmail_thread, email_object)
+                replace_inline_images(email, email_object)
+                gmail_thread.append("emails", email)
+                gmail_thread.save(ignore_permissions=True)
+                frappe.db.commit()  # nosemgrep
+                frappe.db.set_value(
+                    "Gmail Thread",
+                    gmail_thread.name,
+                    "modified",
+                    email.date_and_time,
+                    update_modified=False,
+                )
+                if is_new_thread:  # update creation date
+                    frappe.db.set_value(
+                        "Gmail Thread",
+                        gmail_thread.name,
+                        "creation",
+                        email.date_and_time,
+                        update_modified=False,
+                    )
+                frappe.db.set_value(
+                    "Gmail Thread",
+                    gmail_thread.name,
+                    "owner",
+                    gmail_account.linked_user,
+                    modified_by=gmail_account.linked_user,
+                    update_modified=False,
+                )
+
+
+@frappe.whitelist()  # nosemgrep
+def process_thread_batch(user: str, label_id: str, thread_ids: List[str]):
+    if user:
+        frappe.set_user(user)
+    gmail_account = frappe.get_doc("Gmail Account", {"linked_user": user})
+    gmail = get_gmail_object(gmail_account)
+    _process_threads_batch(gmail_account, gmail, thread_ids)
+
+
 def sync(user=None):
     if user:
         frappe.set_user(user)
@@ -134,6 +342,21 @@ def sync(user=None):
     last_history_id = int(gmail_account.last_historyid or 0)
     max_history_id = last_history_id
 
+    google_settings = _get_google_settings()
+    max_threads_per_label = 0
+    batch_size = 0
+    batch_jobs = False
+    if google_settings:
+        try:
+            max_threads_per_label = int(getattr(google_settings, "custom_gmail_max_threads_per_label", 0) or 0)
+        except Exception:
+            max_threads_per_label = 0
+        try:
+            batch_size = int(getattr(google_settings, "custom_gmail_batch_size", 0) or 0)
+        except Exception:
+            batch_size = 0
+        batch_jobs = bool(getattr(google_settings, "custom_gmail_batch_jobs", 0))
+
     for label_id in label_ids:
         try:
             if not last_history_id:
@@ -146,7 +369,36 @@ def sync(user=None):
                 )
                 if "threads" not in threads:
                     continue
-                for thread in threads["threads"][::-1]:
+                # Apply limit if configured
+                thread_list = threads["threads"][::-1]
+                if max_threads_per_label > 0:
+                    thread_list = thread_list[:max_threads_per_label]
+
+                # If batching is enabled, process in chunks, possibly enqueuing as separate jobs
+                if batch_size and batch_size > 0:
+                    thread_id_chunks = _chunk_list([t["id"] for t in thread_list], batch_size)
+                    for chunk in thread_id_chunks:
+                        if batch_jobs:
+                            job_name = f"gmail_thread_batch_{user}_{label_id}_{chunk[0]}"
+                            frappe.enqueue(
+                                "frappe_gmail_thread.frappe_gmail_thread.doctype.gmail_thread.gmail_thread.process_thread_batch",
+                                user=user,
+                                label_id=label_id,
+                                thread_ids=chunk,
+                                queue="long",
+                                job_name=job_name,
+                                job_id=job_name,
+                            )
+                        else:
+                            _process_threads_batch(gmail_account, gmail, chunk)
+                    # Continue to next label after enqueuing/processing batches
+                    gmail_account.reload()
+                    gmail_account.last_historyid = max_history_id
+                    gmail_account.save(ignore_permissions=True)
+                    frappe.db.commit()  # nosemgrep
+                    continue
+
+                for thread in thread_list:
                     thread_id = thread["id"]
                     thread_data = (
                         gmail.users().threads().get(userId="me", id=thread_id).execute()
@@ -278,34 +530,71 @@ def sync(user=None):
                     max_history_id = new_history_id
                 updated_docs = set()
                 if "history" in history:
+                    # Collect message ids and thread mapping
+                    message_ids: List[str] = []
+                    message_to_thread: Dict[str, str] = {}
                     for hist in history["history"]:
                         for message in hist.get("messages", []):
-                            try:
-                                raw_email = (
-                                    gmail.users()
-                                    .messages()
-                                    .get(userId="me", id=message["id"], format="raw")
-                                    .execute()
+                            mid = message.get("id")
+                            tid = message.get("threadId")
+                            if not mid or not tid:
+                                continue
+                            message_ids.append(mid)
+                            message_to_thread[mid] = tid
+
+                    if not message_ids:
+                        gmail_account.reload()
+                        gmail_account.last_historyid = max_history_id
+                        gmail_account.save(ignore_permissions=True)
+                        frappe.db.commit()  # nosemgrep
+                        continue
+
+                    start_time = time.time()
+                    total_processed = 0
+                    total_skipped_draft = 0
+                    total_duplicates = 0
+
+                    # Use batch_size if configured; fall back to 50
+                    incremental_batch_size = batch_size if batch_size and batch_size > 0 else 50
+
+                    for mids_chunk in _chunk_list(message_ids, incremental_batch_size):
+                        # Rate-limit gate
+                        wait_s = _get_wait_seconds_if_rate_limited(gmail_account.name)
+                        if wait_s > 0:
+                            logger.info(
+                                f"gmail_sync: rate-limited; deferring chunk (account={gmail_account.name}, wait_s={wait_s})"
+                            )
+                            break
+                        try:
+                            messages_map = _batch_fetch_raw_messages(gmail, mids_chunk)
+                        except googleapiclient.errors.HttpError as e:
+                            status = getattr(getattr(e, "resp", None), "status", None)
+                            if status == 429:
+                                retry_after = getattr(e, "resp", {}).get("retry-after") if hasattr(e, "resp") else None
+                                retry_after_seconds = int(retry_after) if retry_after and str(retry_after).isdigit() else 60
+                                _set_rate_limit_until(gmail_account.name, retry_after_seconds)
+                                logger.info(
+                                    f"gmail_sync: 429 received; setting retry-after {retry_after_seconds}s (account={gmail_account.name})"
                                 )
-                            except googleapiclient.errors.HttpError as e:
-                                if hasattr(e, "error_details"):
-                                    for error in e.error_details:
-                                        if error.get("reason") == "notFound":
-                                            break
-                                else:
-                                    raise e
+                                break
+                            raise
+
+                        for mid, raw_email in messages_map.items():
+                            if not raw_email:
                                 continue
                             if "DRAFT" in raw_email.get("labelIds", []):
+                                total_skipped_draft += 1
                                 continue
-                            thread_id = message["threadId"]
+                            thread_id = message_to_thread.get(mid)
+                            if not thread_id:
+                                continue
                             gmail_thread = find_gmail_thread(thread_id)
                             involved_users = set()
                             is_new_thread = False
                             try:
-                                email, email_object = create_new_email(
-                                    raw_email, gmail_account
-                                )
+                                email, email_object = create_new_email(raw_email, gmail_account)
                             except AlreadyExistsError:
+                                total_duplicates += 1
                                 continue
                             if not gmail_thread:
                                 email_message_id = email_object.message_id
@@ -366,6 +655,12 @@ def sync(user=None):
                                         gmail_thread.reference_name,
                                     )
                                 )
+                            total_processed += 1
+
+                    elapsed = round((time.time() - start_time), 2)
+                    logger.info(
+                        f"gmail_sync: incremental label={label_id} processed={total_processed} drafts_skipped={total_skipped_draft} duplicates={total_duplicates} elapsed_s={elapsed}"
+                    )
                 gmail_account.reload()
                 gmail_account.last_historyid = max_history_id
                 gmail_account.save(ignore_permissions=True)
